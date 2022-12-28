@@ -1,0 +1,22 @@
+{
+  "name": "auto-streaming-stt",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "repository": "git@github.com:keichan34/auto-streaming-stt.git",
+  "author": "Keitaroh Kobayashi <keita@kbys.me>",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "start": "ts-node ./src/index.ts",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@tsconfig/node18": "^1.0.1",
+    "@types/node": "^18",
+    "ts-node": "^10.9.1",
+    "typescript": "^4.9.4"
+  },
+  "dependencies": {
+    "@aws-sdk/client-transcribe-streaming": "^3.238.0"
+  }
+}
