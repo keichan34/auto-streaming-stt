@@ -12,7 +12,7 @@ const runSox = (outStream: PassThrough) => new Promise<void>((resolve, reject) =
     '-t', 'raw', '-',
     'silence', '1', '0.5', '0.1%', '1', '0.5', '0.1%',
   ], {
-    stdio: ['pipe', 'pipe', process.stderr],
+    stdio: ['pipe', 'pipe', 'ignore'],
   });
 
   soxProcess.stdout.pipe(outStream);
@@ -31,17 +31,15 @@ const runSox = (outStream: PassThrough) => new Promise<void>((resolve, reject) =
 
 function getAudioStream() {
   const audioPayloadStream = new PassThrough({ highWaterMark: 1 * 1024 });
-  let resolveAudioStarted: () => void;
   const audioStarted = new Promise<void>((resolve) => {
-    resolveAudioStarted = resolve;
+    const payloadStreamReadableHandler = () => {
+      audioPayloadStream.off('readable', payloadStreamReadableHandler);
+      resolve();
+    };
+    audioPayloadStream.on('readable', payloadStreamReadableHandler);
   });
   const audioStream = async function* () {
-    let first = true;
     for await (const chunk of audioPayloadStream) {
-      if (first) {
-        resolveAudioStarted();
-        first = false;
-      }
       yield { AudioEvent: { AudioChunk: chunk } };
     }
   };
