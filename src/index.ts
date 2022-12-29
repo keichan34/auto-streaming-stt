@@ -14,7 +14,7 @@ const runSox = (outStream: PassThrough) => new Promise<void>((resolve, reject) =
   ], {
     stdio: ['pipe', 'pipe', process.stderr],
   });
-  
+
   soxProcess.stdout.pipe(outStream);
 
   soxProcess.on('close', (code) => {
@@ -31,8 +31,17 @@ const runSox = (outStream: PassThrough) => new Promise<void>((resolve, reject) =
 
 function getAudioStream() {
   const audioPayloadStream = new PassThrough({ highWaterMark: 1 * 1024 });
+  let resolveAudioStarted: () => void;
+  const audioStarted = new Promise<void>((resolve) => {
+    resolveAudioStarted = resolve;
+  });
   const audioStream = async function* () {
+    let first = true;
     for await (const chunk of audioPayloadStream) {
+      if (first) {
+        resolveAudioStarted();
+        first = false;
+      }
       yield { AudioEvent: { AudioChunk: chunk } };
     }
   };
@@ -40,6 +49,7 @@ function getAudioStream() {
   return {
     audioStream,
     soxPromise,
+    audioStarted,
   };
 }
 
@@ -48,12 +58,16 @@ async function main() {
     region: 'ap-northeast-1',
   });
 
+  console.log('Starting...');
   for (;;) {
     const {
       audioStream,
       soxPromise,
+      audioStarted,
     } = getAudioStream();
 
+    await audioStarted;
+    console.log('Audio detected, starting transcription...');
     const command = new StartStreamTranscriptionCommand({
       LanguageCode: 'ja-JP',
       MediaEncoding: 'pcm',
@@ -74,6 +88,7 @@ async function main() {
     }
 
     await soxPromise;
+    console.log('Transcription finished.');
   }
 }
 
