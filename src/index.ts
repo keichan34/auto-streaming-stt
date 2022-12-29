@@ -8,7 +8,7 @@ import { spawn } from 'child_process';
 const runSox = (outStream: PassThrough) => new Promise<void>((resolve, reject) => {
   const soxProcess = spawn('/usr/bin/sox', [
     '-t', 'alsa', 'hw:0',
-    '-c', '1', '-b', '16', '-r', '8000', '-e', 'signed-integer',
+    '-c', '1', '-b', '16', '-r', '48000', '-e', 'signed-integer', '-L',
     '-t', 'raw', '-',
     'silence', '1', '0.5', '0.1%', '1', '0.5', '0.1%',
   ], {
@@ -18,8 +18,8 @@ const runSox = (outStream: PassThrough) => new Promise<void>((resolve, reject) =
   soxProcess.stdout.pipe(outStream);
 
   soxProcess.on('close', (code) => {
-    if (!code || code > 0) {
-      return reject(new Error(`sox exited with ${code || 'undefined'}`));
+    if (code !== null && code > 0) {
+      return reject(new Error(`sox exited with ${code}`));
     }
     resolve();
   });
@@ -67,7 +67,7 @@ async function main() {
     const command = new StartStreamTranscriptionCommand({
       LanguageCode: 'ja-JP',
       MediaEncoding: 'pcm',
-      MediaSampleRateHertz: 8000,
+      MediaSampleRateHertz: 48000,
       AudioStream: audioStream(),
     });
 
@@ -82,11 +82,12 @@ async function main() {
 
     console.log('Transcription started:');
     for await (const event of response.TranscriptResultStream) {
-      if (!event.TranscriptEvent) { return; }
-      const message = event.TranscriptEvent;
-      const results = event.TranscriptEvent.Transcript?.Results;
-      console.log(message);
-      console.log(JSON.stringify(results));
+      if (!event.TranscriptEvent?.Transcript) { continue; }
+      const results = event.TranscriptEvent.Transcript.Results || [];
+      for (const result of results) {
+        if (result.IsPartial) { continue; }
+        console.log((result.Alternatives || [])[0].Transcript);
+      }
     }
 
     await soxPromise;
