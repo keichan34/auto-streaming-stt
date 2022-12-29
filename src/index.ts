@@ -66,7 +66,6 @@ async function main() {
       audioStarted,
     } = getAudioStream();
 
-    await audioStarted;
     console.log('Audio detected, starting transcription...');
     const command = new StartStreamTranscriptionCommand({
       LanguageCode: 'ja-JP',
@@ -74,7 +73,14 @@ async function main() {
       MediaSampleRateHertz: 8000,
       AudioStream: audioStream(),
     });
-    const response = await client.send(command);
+    const [
+      _audioStarted,
+      response
+    ] = await Promise.all([
+      audioStarted,
+      client.send(command),
+    ]);
+
     if (!response.TranscriptResultStream) {
       console.error('AWS Error');
       continue;
