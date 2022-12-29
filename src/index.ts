@@ -66,25 +66,23 @@ async function main() {
       audioStarted,
     } = getAudioStream();
 
-    console.log('Audio detected, starting transcription...');
     const command = new StartStreamTranscriptionCommand({
       LanguageCode: 'ja-JP',
       MediaEncoding: 'pcm',
       MediaSampleRateHertz: 8000,
       AudioStream: audioStream(),
     });
-    const [
-      _audioStarted,
-      response
-    ] = await Promise.all([
-      audioStarted,
-      client.send(command),
-    ]);
+
+    await audioStarted;
+    console.log('Audio detected, starting transcription...');
+    const response = await client.send(command);
 
     if (!response.TranscriptResultStream) {
       console.error('AWS Error');
       continue;
     }
+
+    console.log('Transcription started:');
     for await (const event of response.TranscriptResultStream) {
       if (!event.TranscriptEvent) { return; }
       const message = event.TranscriptEvent;
