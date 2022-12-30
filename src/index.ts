@@ -2,8 +2,13 @@ import {
   TranscribeStreamingClient,
   StartStreamTranscriptionCommand,
 } from "@aws-sdk/client-transcribe-streaming";
-import { PassThrough } from "stream";
-import { spawn } from 'child_process';
+import * as dayjs from 'dayjs';
+import { PassThrough } from "node:stream";
+import { spawn } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
+const OUTPUT_DIR = process.env['OUTPUT_DIR'] || path.join(process.cwd(), 'out');
 
 const runSox = (outStream: PassThrough) => new Promise<void>((resolve, reject) => {
   const soxProcess = spawn('/usr/bin/sox', [
@@ -41,7 +46,12 @@ function getAudioStream() {
     audioPayloadStream.on('readable', payloadStreamReadableHandler);
   });
   const audioStream = async function* () {
+    let outStream: fs.WriteStream | undefined = undefined;
     for await (const chunk of audioPayloadStream) {
+      if (typeof outStream === 'undefined') {
+        outStream = fs.createWriteStream(path.join(OUTPUT_DIR, dayjs().format('YYYYMMDDHHmmss[.raw]')));
+      }
+      outStream.write(chunk);
       yield { AudioEvent: { AudioChunk: chunk } };
     }
   };
@@ -57,6 +67,8 @@ async function main() {
   const client = new TranscribeStreamingClient({
     region: 'ap-northeast-1',
   });
+
+  await fs.promises.mkdir(OUTPUT_DIR, { recursive: true });
 
   console.log('Starting...');
   for (;;) {
