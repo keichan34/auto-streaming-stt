@@ -40,10 +40,12 @@ const runSox = (outStream: PassThrough) => new Promise<void>((resolve, reject) =
 });
 
 function getAudioStream() {
+  let streamId: string | undefined = undefined;
   const audioPayloadStream = new PassThrough({ highWaterMark: 1 * 1024 });
-  const audioStarted = new Promise<void>((resolve) => {
+  const audioStarted = new Promise<string>((resolve) => {
     audioPayloadStream.once('readable', () => {
-      resolve();
+      streamId = dayjs().format('YYYYMMDDHHmmss');
+      resolve(streamId);
     });
   });
   const audioStream = async function* () {
@@ -52,8 +54,8 @@ function getAudioStream() {
     for await (const chunk of audioPayloadStream) {
       if (typeof mp3Stream === 'undefined' || typeof outStream === 'undefined') {
         mp3Stream = rawToMp3();
-        outStream = fs.createWriteStream(path.join(OUTPUT_DIR, dayjs().format('YYYYMMDDHHmmss[.mp3]')));
-        mp3Stream.pipe(outStream);
+        const fsStream = fs.createWriteStream(path.join(OUTPUT_DIR, streamId + '.mp3'));
+        outStream = mp3Stream.pipe(fsStream);
       }
       mp3Stream.write(chunk);
       yield { AudioEvent: { AudioChunk: chunk } };
@@ -92,8 +94,8 @@ async function main() {
       AudioStream: audioStream(),
     });
 
-    await audioStarted;
-    console.log('Audio detected, starting transcription...');
+    const streamId = await audioStarted;
+    console.log(`Audio detected, starting transcription... (streamId=${streamId})`);
     const response = await client.send(command);
 
     if (!response.TranscriptResultStream) {
@@ -106,13 +108,16 @@ async function main() {
       if (!event.TranscriptEvent?.Transcript) { continue; }
       const results = event.TranscriptEvent.Transcript.Results || [];
       for (const result of results) {
-        if (result.IsPartial) { continue; }
-        console.log((result.Alternatives || [])[0].Transcript);
+        if (result.IsPartial) {
+          console.log('[Partial]', (result.Alternatives || [])[0].Transcript);
+        } else {
+          console.log((result.Alternatives || [])[0].Transcript);
+        }
       }
     }
 
     await soxPromise;
-    console.log('Transcription finished.');
+    console.log(`Transcription finished.`);
   }
 }
 
