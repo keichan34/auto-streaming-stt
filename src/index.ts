@@ -2,7 +2,7 @@ import {
   TranscribeStreamingClient,
   StartStreamTranscriptionCommand,
 } from "@aws-sdk/client-transcribe-streaming";
-import * as dayjs from 'dayjs';
+import dayjs from 'dayjs';
 import { PassThrough } from "node:stream";
 import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
