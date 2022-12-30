@@ -4,10 +4,10 @@ Raspberry Pi appliance to automatically stream audio to a speech-to-text service
 
 ## Installation
 
-Requires ALSA and sox. Set your audio input as the default input.
+Requires ALSA, sox, and LAME. Set your audio input as the default input.
 
 ```
-apt install sox
+apt install sox lame
 ```
 
 ## rec command

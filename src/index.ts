@@ -3,12 +3,15 @@ import {
   StartStreamTranscriptionCommand,
 } from "@aws-sdk/client-transcribe-streaming";
 import dayjs from 'dayjs';
-import { PassThrough } from "node:stream";
+import { Duplex, PassThrough } from "node:stream";
 import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { rawToMp3 } from "./mp3";
 
 const OUTPUT_DIR = process.env['OUTPUT_DIR'] || path.join(process.cwd(), 'out');
+
+
 
 const runSox = (outStream: PassThrough) => new Promise<void>((resolve, reject) => {
   const soxProcess = spawn('/usr/bin/sox', [
@@ -39,19 +42,20 @@ const runSox = (outStream: PassThrough) => new Promise<void>((resolve, reject) =
 function getAudioStream() {
   const audioPayloadStream = new PassThrough({ highWaterMark: 1 * 1024 });
   const audioStarted = new Promise<void>((resolve) => {
-    const payloadStreamReadableHandler = () => {
-      audioPayloadStream.off('readable', payloadStreamReadableHandler);
+    audioPayloadStream.once('readable', () => {
       resolve();
-    };
-    audioPayloadStream.on('readable', payloadStreamReadableHandler);
+    });
   });
   const audioStream = async function* () {
+    let mp3Stream: Duplex | undefined = undefined;
     let outStream: fs.WriteStream | undefined = undefined;
     for await (const chunk of audioPayloadStream) {
-      if (typeof outStream === 'undefined') {
-        outStream = fs.createWriteStream(path.join(OUTPUT_DIR, dayjs().format('YYYYMMDDHHmmss[.raw]')));
+      if (typeof mp3Stream === 'undefined' || typeof outStream === 'undefined') {
+        mp3Stream = rawToMp3();
+        outStream = fs.createWriteStream(path.join(OUTPUT_DIR, dayjs().format('YYYYMMDDHHmmss[.mp3]')));
+        mp3Stream.pipe(outStream);
       }
-      outStream.write(chunk);
+      mp3Stream.write(chunk);
       yield { AudioEvent: { AudioChunk: chunk } };
     }
     if (typeof outStream !== 'undefined') {
