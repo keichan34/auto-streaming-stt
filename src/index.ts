@@ -20,7 +20,7 @@ const runSox = (outStream: PassThrough) => new Promise<void>((resolve, reject) =
     '-t', 'raw', '-',
     'silence', // silence filter
     '1', '0.5', '0.10%', // start recording when 1 period of 0.5s is above 0.10% (0.5s)
-    '4', '1.0', '0.15%', // end recording when 4 periods of 1.0s is below 0.15% (4.0s)
+    '10', '1.0', '0.15%', // end recording when 10 periods of 1.0s is below 0.15% (Amazon Transcribe times out after 15 seconds of silence)
   ], {
     stdio: ['pipe', 'pipe', 'ignore'],
   });
