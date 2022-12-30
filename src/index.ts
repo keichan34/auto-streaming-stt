@@ -54,6 +54,9 @@ function getAudioStream() {
       outStream.write(chunk);
       yield { AudioEvent: { AudioChunk: chunk } };
     }
+    if (typeof outStream !== 'undefined') {
+      outStream.close();
+    }
   };
   const soxPromise = runSox(audioPayloadStream);
   return {
