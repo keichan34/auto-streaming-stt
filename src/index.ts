@@ -19,8 +19,8 @@ const runSox = (outStream: PassThrough) => new Promise<void>((resolve, reject) =
     '-c', '1', '-b', '16', '-r', '48000', '-e', 'signed-integer', '-L',
     '-t', 'raw', '-',
     'silence', // silence filter
-    '1', '0.5', '0.1%', // start recording when 1 period of 0.5s is above 0.1% (0.5s)
-    '4', '0.5', '0.1%', // end recording when 4 periods of 0.5s is below 0.1% (2.0s)
+    '1', '0.5', '0.10%', // start recording when 1 period of 0.5s is above 0.10% (0.5s)
+    '4', '1.0', '0.15%', // end recording when 4 periods of 1.0s is below 0.15% (4.0s)
   ], {
     stdio: ['pipe', 'pipe', 'ignore'],
   });
