@@ -11,8 +11,6 @@ import { rawToMp3 } from "./mp3";
 
 const OUTPUT_DIR = process.env['OUTPUT_DIR'] || path.join(process.cwd(), 'out');
 
-
-
 const runSox = (outStream: PassThrough) => new Promise<void>((resolve, reject) => {
   const soxProcess = spawn('/usr/bin/sox', [
     '-t', 'alsa', 'hw:0',
@@ -96,24 +94,28 @@ async function main() {
 
     const streamId = await audioStarted;
     console.log(`Audio detected, starting transcription... (streamId=${streamId})`);
-    const response = await client.send(command);
+    try {
+      const response = await client.send(command);
 
-    if (!response.TranscriptResultStream) {
-      console.error('AWS Error');
-      continue;
-    }
+      if (!response.TranscriptResultStream) {
+        console.error('AWS Error');
+        continue;
+      }
 
-    console.log('Transcription started:');
-    for await (const event of response.TranscriptResultStream) {
-      if (!event.TranscriptEvent?.Transcript) { continue; }
-      const results = event.TranscriptEvent.Transcript.Results || [];
-      for (const result of results) {
-        if (result.IsPartial) {
-          console.log('[Partial]', (result.Alternatives || [])[0].Transcript);
-        } else {
-          console.log((result.Alternatives || [])[0].Transcript);
+      console.log('Transcription started:');
+      for await (const event of response.TranscriptResultStream) {
+        if (!event.TranscriptEvent?.Transcript) { continue; }
+        const results = event.TranscriptEvent.Transcript.Results || [];
+        for (const result of results) {
+          if (result.IsPartial) {
+            console.log('[Partial]', (result.Alternatives || [])[0].Transcript);
+          } else {
+            console.log((result.Alternatives || [])[0].Transcript);
+          }
         }
       }
+    } catch (e) {
+      console.error(`Error in transcription:`, e, 'Stream continue, but transcription stopped.');
     }
 
     await soxPromise;

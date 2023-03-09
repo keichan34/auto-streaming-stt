@@ -1,6 +1,6 @@
 # auto-streaming-stt
 
-Raspberry Pi appliance to automatically stream audio to a speech-to-text service
+Raspberry Pi appliance to automatically stream audio to a speech-to-text service, with a live-updating browser user interface.
 
 ## Installation
 
