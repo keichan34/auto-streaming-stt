@@ -58,7 +58,6 @@ const runSox = (outStream: PassThrough) => new Promise<void>((resolve, reject) =
 
 function getAudioStream() {
   let streamId: string | undefined = undefined;
-  let pipelinePromise: Promise<void> | undefined = undefined;
 
   const audioPayloadStream = new PassThrough({ highWaterMark: 1 * 1024 });
   const audioStarted = new Promise<string>((resolve) => {
@@ -68,7 +67,7 @@ function getAudioStream() {
       // Initialize the MP3 streaming encoder
       const mp3Stream = rawToMp3();
       const fsStream = fs.createWriteStream(path.join(OUTPUT_DIR, streamId + '.mp3'));
-      pipelinePromise = pipeline(audioPayloadStream, mp3Stream, fsStream);
+      pipeline(audioPayloadStream, mp3Stream, fsStream);
 
       resolve(streamId);
     });
@@ -144,6 +143,7 @@ export default class Transcription extends EventEmitter {
       console.log(`Audio detected, starting transcription... (streamId=${streamId})`);
 
       this.emit('streamStarted', { streamId });
+      const textOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.txt'));
       for await (const item of runTranscriptionUntilDone(audioStream)) {
         this.emit('transcript', { streamId, item });
 
@@ -151,10 +151,12 @@ export default class Transcription extends EventEmitter {
           console.log('[Partial]', item.content);
         } else {
           console.log(item.content);
+          textOut.write(item.content + '\n');
         }
       }
 
       await soxPromise;
+      await textOut.close();
       console.log(`Transcription finished.`);
       this.emit('streamEnded', { streamId });
     }
