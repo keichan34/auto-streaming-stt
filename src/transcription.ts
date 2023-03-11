@@ -143,7 +143,7 @@ export default class Transcription extends EventEmitter {
       console.log(`Audio detected, starting transcription... (streamId=${streamId})`);
 
       this.emit('streamStarted', { streamId });
-      const textOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.txt'));
+      const textOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.txt'), 'w');
       for await (const item of runTranscriptionUntilDone(audioStream)) {
         this.emit('transcript', { streamId, item });
 
