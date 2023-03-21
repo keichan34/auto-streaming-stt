@@ -3,13 +3,15 @@ import {
   StartStreamTranscriptionCommand,
 } from "@aws-sdk/client-transcribe-streaming";
 import dayjs from 'dayjs';
-import { PassThrough, pipeline as _pipeline } from "node:stream";
+import { Duplex, PassThrough, pipeline as _pipeline } from "node:stream";
 import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { promisify } from "node:util";
 import { rawToMp3 } from "./mp3";
 import EventEmitter from "node:events";
+import gcloudSpeech from "@google-cloud/speech";
+import { google } from "@google-cloud/speech/build/protos/protos";
 
 type AudioStreamEvent = {
   AudioEvent: {
@@ -28,6 +30,10 @@ const OUTPUT_DIR = process.env['OUTPUT_DIR'] || path.join(process.cwd(), 'out');
 
 const TranscribeClient = new TranscribeStreamingClient({
   region: 'ap-northeast-1',
+});
+
+const gSpeechClient = new gcloudSpeech.SpeechClient({
+  // auth: process.env.GOOGLE_API_KEY!,
 });
 
 const runSox = (outStream: PassThrough) => new Promise<void>((resolve, reject) => {
@@ -88,7 +94,7 @@ function getAudioStream() {
   };
 }
 
-async function *runTranscriptionUntilDone(
+async function *runTranscriptionUntilDoneAmz(
   audioStream: () => AsyncGenerator<AudioStreamEvent, void, unknown>
 ) {
   let done: boolean = false;
@@ -127,6 +133,50 @@ async function *runTranscriptionUntilDone(
   }
 }
 
+async function *runTranscriptionUntilDoneGoogle(
+  audioStream: () => AsyncGenerator<AudioStreamEvent, void, unknown>
+) {
+  let done: boolean = false;
+
+  while (!done) {
+    const request: google.cloud.speech.v1.IStreamingRecognitionConfig = {
+      config: {
+        encoding: "LINEAR16",
+        sampleRateHertz: 48000,
+        languageCode: 'ja-JP',
+        model: 'latest_long',
+        adaptation: {
+          phraseSetReferences: [
+            "projects/987120412612/locations/global/phraseSets/yakushima-bosai"
+          ],
+        },
+      },
+      interimResults: true,
+    };
+    const transcriptStream = gSpeechClient.streamingRecognize(request);
+    const inputAudioStream = Duplex.from(async function *() {
+      for await (const { AudioEvent: { AudioChunk: chunk } } of audioStream()) {
+        yield chunk;
+      }
+    });
+    inputAudioStream.pipe(transcriptStream);
+    for await (const _data of transcriptStream) {
+      const data = _data as google.cloud.speech.v1.StreamingRecognizeResponse;
+      const result = data.results[0];
+      if (!result || (result.alternatives || [])[0]) {
+        // done
+        break;
+      }
+      const out: TranscriptionResult = {
+        partial: !!result.isFinal,
+        content: (result.alternatives || [])[0].transcript || "",
+      }
+      yield out;
+    }
+    done = true;
+  }
+}
+
 export default class Transcription extends EventEmitter {
   async start() {
     await fs.promises.mkdir(OUTPUT_DIR, { recursive: true });
@@ -144,7 +194,7 @@ export default class Transcription extends EventEmitter {
 
       this.emit('streamStarted', { streamId });
       const textOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.txt'), 'w');
-      for await (const item of runTranscriptionUntilDone(audioStream)) {
+      for await (const item of runTranscriptionUntilDoneAmz(audioStream)) {
         this.emit('transcript', { streamId, item });
 
         if (item.partial) {
