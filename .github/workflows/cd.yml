@@ -51,7 +51,10 @@ jobs:
           path: frontend/build/
 
   deploy:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    env:
+      MACHINE: rpi-audio
     needs:
       - build-backend
       - build-frontend
@@ -68,3 +71,25 @@ jobs:
 
       - name: Display structure of downloaded files
         run: ls -R
+
+      - name: Setup Tailscale
+        id: tailscale
+        uses: tailscale/github-action@main
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
+      - name: Add SSH key
+        id: ssh
+        env:
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          MACHINE_IP="$(tailscale ip -6 $MACHINE)"
+          ssh-keyscan $MACHINE_IP >> ~/.ssh/known_hosts
+          printf "%s" "$SSH_KEY" > ~/.ssh/key
+          chmod 600 ~/.ssh/key
+
+      - name: Deploy
+        run: |
+          MACHINE_IP="$(tailscale ip -6 $MACHINE)"
+          rsync -avr --dry-run ./ "pi@[$MACHINE_IP]":/home/pi/auto-streaming-stt/
