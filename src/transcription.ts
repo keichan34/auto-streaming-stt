@@ -37,8 +37,14 @@ const gSpeechClient = new gcloudSpeech.SpeechClient({
 });
 
 const runSox = (outStream: PassThrough) => new Promise<void>((resolve, reject) => {
-  const soxProcess = spawn('/usr/bin/sox', [
-    '-t', 'alsa', 'hw:0',
+  let soxPath = '/usr/bin/sox';
+  let inputDef: string[] = ['-t', 'alsa', 'hw:0'];
+  if (process.platform === 'darwin') {
+    soxPath = '/opt/homebrew/bin/sox';
+    inputDef = ['-t', 'coreaudio', 'default'];
+  }
+  const soxProcess = spawn(soxPath, [
+    ...inputDef,
     '-c', '1', '-b', '16', '-r', '48000', '-e', 'signed-integer', '-L',
     '-t', 'raw', '-',
     'silence', // silence filter
@@ -194,7 +200,11 @@ export default class Transcription extends EventEmitter {
 
       this.emit('streamStarted', { streamId });
       const textOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.txt'), 'w');
+      let lastContent = '';
       for await (const item of runTranscriptionUntilDoneAmz(audioStream)) {
+        if (item.partial && item.content === lastContent) { continue; }
+        lastContent = item.content;
+
         this.emit('transcript', { streamId, item });
 
         if (item.partial) {
