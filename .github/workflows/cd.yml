@@ -93,4 +93,4 @@ jobs:
         run: |
           MACHINE_IP="$(tailscale ip -6 $MACHINE)"
           rsync -avr -e "ssh -i $HOME/.ssh/key" ./ "pi@[$MACHINE_IP]":/home/pi/auto-streaming-stt/
-          ssh -i "$HOME/.ssh/key" "pi@$MACHINE_IP" 'pm2 restart index'
+          ssh -i "$HOME/.ssh/key" "pi@$MACHINE_IP" 'cd /home/pi/auto-streaming-stt && yarn && pm2 restart index'
