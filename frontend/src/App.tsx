@@ -64,6 +64,7 @@ const SinglePastTranscription: React.FC<{id: string}> = ({id}) => {
         <h5 className="card-title">{dayjs(id, "YYYYMMDDHHmmss").format("LL(dddd) LT")}</h5>
         <audio
           controls
+          preload="none"
           src={`/api/streams/${id}.mp3`}
         />
         <TranscriptLineView items={transcript} />
