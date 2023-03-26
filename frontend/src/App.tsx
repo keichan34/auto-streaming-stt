@@ -59,7 +59,7 @@ const SinglePastTranscription: React.FC<{id: string}> = ({id}) => {
   }, [id]);
 
   return (
-    <div className="card">
+    <div className="card mb-2">
       <div className="card-body">
         <h5 className="card-title">{dayjs(id, "YYYYMMDDHHmmss").format("LL(dddd) LT")}</h5>
         <audio
@@ -77,7 +77,7 @@ const PastTranscriptions: React.FC<{pastTranscriptionIds: string[]}> = ({pastTra
   return (
     <div>
       <h3>過去の放送</h3>
-      <div>
+      <div className="mb-2">
         {pastTranscriptionIds.map((id) => (
           <SinglePastTranscription key={id} id={id} />
         ))}
@@ -178,6 +178,15 @@ function App() {
   return (
     <div className="container">
       <h1 className="my-4">屋久島の防災放送 (安房・松峯地区)</h1>
+
+      <p>
+        ご注意: このサイトは公式なものではありません。あくまで個人が実験的に作ったものであり、いつでも停止する可能性もあります。また、内容については不完全な可能性もあり、文字起こしは自動で生成したものであり、正確性については保証できません。
+        <br />
+        このサイトの仕組みや背景については、<a href="https://keita.blog/?p=3478" rel="noopener noreferer">こちらの記事</a> をご覧ください。
+      </p>
+      <p>
+        お問い合わせは、<a href="https://keita.blog/about/" rel="noopener noreferer">こちらのフォーム</a> までお願いします。
+      </p>
 
       <div className="mb-4">
         <h3>現在の放送</h3>
