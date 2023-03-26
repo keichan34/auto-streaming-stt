@@ -86,7 +86,7 @@ jobs:
           mkdir -p ~/.ssh
           MACHINE_IP="$(tailscale ip -6 $MACHINE)"
           ssh-keyscan $MACHINE_IP >> $HOME/.ssh/known_hosts
-          printf "%s" "$SSH_KEY" > $HOME/.ssh/key
+          echo "$SSH_KEY" > $HOME/.ssh/key
           chmod 600 ~/.ssh/key
 
       - name: Deploy
