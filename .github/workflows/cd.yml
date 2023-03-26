@@ -85,11 +85,11 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           MACHINE_IP="$(tailscale ip -6 $MACHINE)"
-          ssh-keyscan $MACHINE_IP >> ~/.ssh/known_hosts
-          printf "%s" "$SSH_KEY" > ~/.ssh/key
+          ssh-keyscan $MACHINE_IP >> $HOME/.ssh/known_hosts
+          printf "%s" "$SSH_KEY" > $HOME/.ssh/key
           chmod 600 ~/.ssh/key
 
       - name: Deploy
         run: |
           MACHINE_IP="$(tailscale ip -6 $MACHINE)"
-          rsync -avr --dry-run ./ "pi@[$MACHINE_IP]":/home/pi/auto-streaming-stt/
+          rsync -avr --dry-run -e "ssh -i $HOME/.ssh/key" ./ "pi@[$MACHINE_IP]":/home/pi/auto-streaming-stt/
