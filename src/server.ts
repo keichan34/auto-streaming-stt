@@ -80,6 +80,7 @@ app.get('/api/streams', (_req, res) => {
 
     return streamIds;
   })().then((resp) => {
+    res.setHeader('Cache-Control', 'no-cache');
     res.json(resp);
   });
 });

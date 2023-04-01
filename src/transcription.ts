@@ -209,6 +209,7 @@ export default class Transcription extends EventEmitter {
       const textOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.txt'), 'w');
       let lastContent = '';
       for await (const item of runTranscriptionUntilDoneGoogle(audioStream)) {
+        if (item.content === '') { continue; }
         if (item.partial && item.content === lastContent) { continue; }
         lastContent = item.content;
 
