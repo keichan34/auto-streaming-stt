@@ -59,16 +59,26 @@ app.use('/api/streams', express.static(
 
 app.get('/api/streams', (_req, res) => {
   (async () => {
-    const files = await fs.promises.readdir(path.join(__dirname, '..', 'out'));
-    const allMp3s = files.filter((file) => file.endsWith('.mp3'));
+    const outDir = path.join(__dirname, '..', 'out');
+    const files = await fs.promises.readdir(outDir);
+    const streamIds = files
+      .filter((file) => file.endsWith('.mp3'))
+      .map((file) => path.basename(file, '.mp3'))
+      .filter((streamId) => streamId !== currentStreamId)
+      .filter((streamId) => {
+        const txtFile = path.join(outDir, `${streamId}.txt`);
+        // if the text file is empty, no transcription was made,
+        // so we can ignore this stream
+        if (!fs.existsSync(txtFile)) { return false; }
+        const stat = fs.statSync(txtFile);
+        return stat.size > 0;
+      });
     // sort by date, newest first
-    allMp3s.sort((a, b) => (a > b ? -1 : 1));
+    streamIds.sort((a, b) => (a > b ? -1 : 1));
     // keep the latest 20
-    allMp3s.splice(20);
-    return allMp3s.map((file) => {
-      const streamId = path.basename(file, '.mp3');
-      return streamId;
-    }).filter((streamId) => streamId !== currentStreamId);
+    streamIds.splice(20);
+
+    return streamIds;
   })().then((resp) => {
     res.json(resp);
   });

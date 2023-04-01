@@ -90,6 +90,8 @@ function App() {
   const [backfillTranscriptionId, setBackfillTranscriptionId] = useState<string | null>(null);
   const [liveTranscription, setLiveTranscription] = useState<LiveTranscription | null>(null);
   const [pastTranscriptionIds, setPastTranscriptionIds] = useState<string[]>([]);
+  const [reload, setReload] = useState(0);
+  const [reconnect, setReconnect] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -97,7 +99,7 @@ function App() {
       const data = await resp.json();
       setPastTranscriptionIds(data);
     })();
-  }, []);
+  }, [reload]);
 
   useEffect(() => {
     let proto = 'ws:'; // http
@@ -115,6 +117,7 @@ function App() {
       } else if (message.type === "streamEnded") {
         setLiveTranscription(null);
         setBackfillTranscriptionId(null);
+        setReload((prev) => prev + 1);
       } else if (message.type === "transcript") {
         setLiveTranscription((prev) => {
           if (!prev) {
@@ -143,10 +146,17 @@ function App() {
         });
       }
     });
+    ws.addEventListener('close', () => {
+      setTimeout(() => {
+        setReconnect((prev) => prev + 1);
+      }, 500);
+    });
     return () => {
-      ws.close();
-    }
-  }, []);
+      if (ws.readyState !== WebSocket.CLOSED && ws.readyState !== WebSocket.CLOSING) {
+        ws.close();
+      }
+    };
+  }, [reconnect]);
 
   useEffect(() => {
     (async () => {
