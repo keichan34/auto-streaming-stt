@@ -3,11 +3,11 @@ import {
   StartStreamTranscriptionCommand,
 } from "@aws-sdk/client-transcribe-streaming";
 import dayjs from 'dayjs';
-import { Duplex, PassThrough, pipeline as _pipeline } from "node:stream";
+import { Duplex, PassThrough } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { promisify } from "node:util";
 import { rawToMp3 } from "./mp3";
 import EventEmitter from "node:events";
 import gcloudSpeech from "@google-cloud/speech";
@@ -24,7 +24,6 @@ type TranscriptionResult = {
   content: string
 }
 
-const pipeline = promisify(_pipeline);
 
 const OUTPUT_DIR = process.env['OUTPUT_DIR'] || path.join(process.cwd(), 'out');
 
@@ -160,25 +159,33 @@ async function *runTranscriptionUntilDoneGoogle(
       interimResults: true,
     };
     const transcriptStream = gSpeechClient.streamingRecognize(request);
-    const inputAudioStream = Duplex.from(async function *() {
-      for await (const { AudioEvent: { AudioChunk: chunk } } of audioStream()) {
-        yield chunk;
-      }
-    });
-    inputAudioStream.pipe(transcriptStream);
+
+    const pipelinePromise = pipeline(
+      audioStream,
+      async function *() {
+        for await (const { AudioEvent: { AudioChunk: chunk } } of audioStream()) {
+          yield chunk;
+        }
+      },
+      transcriptStream,
+    );
+
     for await (const _data of transcriptStream) {
       const data = _data as google.cloud.speech.v1.StreamingRecognizeResponse;
+      // console.log(data);
       const result = data.results[0];
-      if (!result || (result.alternatives || [])[0]) {
+      if (!result || !(result.alternatives || [])[0]) {
         // done
         break;
       }
       const out: TranscriptionResult = {
-        partial: !!result.isFinal,
+        partial: !result.isFinal,
         content: (result.alternatives || [])[0].transcript || "",
       }
       yield out;
     }
+
+    await pipelinePromise;
     done = true;
   }
 }
@@ -201,7 +208,7 @@ export default class Transcription extends EventEmitter {
       this.emit('streamStarted', { streamId });
       const textOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.txt'), 'w');
       let lastContent = '';
-      for await (const item of runTranscriptionUntilDoneAmz(audioStream)) {
+      for await (const item of runTranscriptionUntilDoneGoogle(audioStream)) {
         if (item.partial && item.content === lastContent) { continue; }
         lastContent = item.content;
 
