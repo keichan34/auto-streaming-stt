@@ -95,7 +95,7 @@ function App() {
 
   useEffect(() => {
     (async () => {
-      const resp = await fetch(`/api/streams`);
+      const resp = await fetch(`/api/streams/`);
       const data = await resp.json();
       setPastTranscriptionIds(data);
     })();
