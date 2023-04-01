@@ -151,10 +151,20 @@ function App() {
         setReconnect((prev) => prev + 1);
       }, 500);
     });
+
+    const pingFunc = () => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "ping" }));
+      }
+      window.setTimeout(pingFunc, 30_000);
+    };
+    let pingTimeout = window.setTimeout(pingFunc, 30_000);
+
     return () => {
       if (ws.readyState !== WebSocket.CLOSED && ws.readyState !== WebSocket.CLOSING) {
         ws.close();
       }
+      window.clearTimeout(pingTimeout);
     };
   }, [reconnect]);
 
