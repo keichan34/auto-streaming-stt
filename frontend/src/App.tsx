@@ -5,6 +5,7 @@ import dayjs from "dayjs";
 import CustomDateFormat from "dayjs/plugin/customParseFormat";
 import LocalizedFormat from "dayjs/plugin/localizedFormat";
 import 'dayjs/locale/ja';
+import { exponentialBackoffMs } from "./lib/utils";
 
 dayjs.locale('ja');
 dayjs.extend(CustomDateFormat);
@@ -63,6 +64,7 @@ const SinglePastTranscription: React.FC<{id: string}> = ({id}) => {
       <div className="card-body">
         <h5 className="card-title">{dayjs(id, "YYYYMMDDHHmmss").format("LL(dddd) LT")}</h5>
         <audio
+          className="my-2 w-100"
           controls
           preload="none"
           src={`/api/streams/${id}.mp3`}
@@ -147,9 +149,10 @@ function App() {
       }
     });
     ws.addEventListener('close', () => {
+      const delay = exponentialBackoffMs(reconnect);
       setTimeout(() => {
         setReconnect((prev) => prev + 1);
-      }, 500);
+      }, delay);
     });
 
     const pingFunc = () => {
