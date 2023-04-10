@@ -18,19 +18,23 @@ jobs:
         run: yarn
 
       - name: Build the app
-        run: yarn build
+        run: |
+          yarn build
+          mkdir upload
+          cp -r package.json yarn.lock upload/
+          cp -r dist/ upload/dist/
 
       - uses: actions/upload-artifact@v3
         with:
           name: backend
-          path: dist/
+          if-no-files-found: error
+          path: upload/
 
   build-frontend:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-
 
       - uses: actions/setup-node@v3
         with:
@@ -62,12 +66,12 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: backend
-          path: dist/
+          path: ${{github.workspace}}
 
       - uses: actions/download-artifact@v3
         with:
           name: frontend
-          path: frontend/build/
+          path: ${{github.workspace}}/frontend/build/
 
       - name: Display structure of downloaded files
         run: ls -R

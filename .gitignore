@@ -3,3 +3,4 @@ out
 dist
 frontend/build
 .envrc
+upload
