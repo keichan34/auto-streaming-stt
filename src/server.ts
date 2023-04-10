@@ -9,6 +9,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 import Transcription from './transcription';
 
 const app = express();
+app.enable('trust proxy');
 const wss = new WebSocketServer({ noServer: true });
 const server = http.createServer(app);
 
@@ -32,6 +33,14 @@ function broadcastMessage(message: string | Buffer) {
     client.send(message);
   }
 }
+
+app.use(function(request, response, next) {
+  if (process.env.NODE_ENV !== 'development' && !request.secure) {
+    return response.redirect("https://" + request.headers.host + request.url);
+  }
+
+  next();
+});
 
 app.use('/static', express.static(
   path.join(__dirname, '..', 'frontend', 'build', 'static'),
