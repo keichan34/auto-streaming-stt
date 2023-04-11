@@ -7,9 +7,13 @@ import fs from 'node:fs';
 import { WebSocket, WebSocketServer } from 'ws';
 
 import Transcription from './transcription';
+import * as webpush from './webpush';
 
 const app = express();
 app.enable('trust proxy');
+
+app.use(express.json());
+
 const wss = new WebSocketServer({ noServer: true });
 const server = http.createServer(app);
 
@@ -94,6 +98,24 @@ app.get('/api/streams', (_req, res) => {
   });
 });
 
+app.get('/api/push/public-key', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-cache');
+  res.json({ publicKey: webpush.publicKey });
+});
+
+app.post('/api/push/subscribe', (req, res) => {
+  const { subscription } = req.body;
+  if (!subscription) {
+    res.status(400).send('Missing subscription');
+    return;
+  }
+  (async () => {
+    await webpush.subscribe(subscription);
+  })().then(() => {
+    res.status(200).json({error: false});
+  });
+});
+
 server.on('upgrade', (req, socket, head) => {
   const { pathname } = url.parse(req.url || '');
   if (pathname === '/ws') {
@@ -125,6 +147,10 @@ async function serve(transcription: Transcription) {
   });
 
   transcription.on('streamEnded', () => {
+    webpush.broadcast(JSON.stringify({
+      type: 'streamEnded',
+      streamId: currentStreamId,
+    }));
     currentStreamId = null;
   });
 }

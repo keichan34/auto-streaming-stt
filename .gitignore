@@ -4,3 +4,4 @@ dist
 frontend/build
 .envrc
 upload
+data
