@@ -23,11 +23,14 @@ async function openSubscriptions() {
   );
   return subscriptionsFileHandle;
 }
+const subscriptionEndpoints = new Set<string>();
 const subscriptions: PushSubscription[] = [];
 if (fs.existsSync(subscriptionsFilePath)) {
   for (const line of fs.readFileSync(subscriptionsFilePath, "utf-8").split("\n")) {
     if (line) {
-      subscriptions.push(JSON.parse(line));
+      const subscription = JSON.parse(line);
+      subscriptions.push(subscription);
+      subscriptionEndpoints.add(subscription.endpoint);
     }
   }
 }
@@ -41,8 +44,13 @@ webpush.setVapidDetails(
 export const publicKey = vapidKeys.publicKey;
 
 export async function subscribe(subscription: PushSubscription) {
+  if (subscriptionEndpoints.has(subscription.endpoint)) {
+    return;
+  }
+
   const f = await openSubscriptions();
   subscriptions.push(subscription);
+  subscriptionEndpoints.add(subscription.endpoint);
   await f.write(JSON.stringify(subscription) + "\n");
 }
 

@@ -71,6 +71,7 @@ registerRoute(
 
 // This allows the web app to trigger skipWaiting via
 // registration.waiting.postMessage({type: 'SKIP_WAITING'})
+
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
@@ -78,3 +79,15 @@ self.addEventListener('message', (event) => {
 });
 
 // Any other custom service worker logic can go here.
+self.addEventListener('push', function(event) {
+  if (event.data) {
+    const msg = event.data.json();
+    console.log('This push event has data: ', event.data.json());
+
+    if (msg.type === 'streamEnded') {
+      self.registration.showNotification('放送がありました');
+    }
+  } else {
+    console.log('This push event has no data.');
+  }
+});

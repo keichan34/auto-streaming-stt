@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import classNames from "classnames";
 
 import dayjs from "dayjs";
@@ -6,6 +6,7 @@ import CustomDateFormat from "dayjs/plugin/customParseFormat";
 import LocalizedFormat from "dayjs/plugin/localizedFormat";
 import 'dayjs/locale/ja';
 import { exponentialBackoffMs } from "./lib/utils";
+import { askPermissionAndSubscribe } from "./lib/webpush";
 
 dayjs.locale('ja');
 dayjs.extend(CustomDateFormat);
@@ -94,6 +95,12 @@ function App() {
   const [pastTranscriptionIds, setPastTranscriptionIds] = useState<string[]>([]);
   const [reload, setReload] = useState(0);
   const [reconnect, setReconnect] = useState(0);
+
+  useLayoutEffect(() => {
+    (async () => {
+      await askPermissionAndSubscribe();
+    })();
+  }, []);
 
   useEffect(() => {
     (async () => {
