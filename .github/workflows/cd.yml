@@ -87,14 +87,14 @@ jobs:
         env:
           SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
-          mkdir -p ~/.ssh
-          MACHINE_IP="$(tailscale ip -6 $MACHINE)"
+          mkdir -p $HOME/.ssh
+          MACHINE_IP="$(tailscale ip -4 $MACHINE)"
           ssh-keyscan $MACHINE_IP >> $HOME/.ssh/known_hosts
           echo "$SSH_KEY" > $HOME/.ssh/key
-          chmod 600 ~/.ssh/key
+          chmod 600 $HOME/.ssh/key
 
       - name: Deploy
         run: |
-          MACHINE_IP="$(tailscale ip -6 $MACHINE)"
+          MACHINE_IP="$(tailscale ip -4 $MACHINE)"
           rsync -avr -e "ssh -i $HOME/.ssh/key" ./ "pi@[$MACHINE_IP]":/home/pi/auto-streaming-stt/
           ssh -i "$HOME/.ssh/key" "pi@$MACHINE_IP" 'cd /home/pi/auto-streaming-stt && yarn && pm2 restart index'
