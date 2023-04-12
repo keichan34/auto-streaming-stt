@@ -221,7 +221,7 @@ function App() {
         お問い合わせは、<a href="https://keita.blog/about/" rel="noopener noreferer">こちらのフォーム</a> までお願いします。
       </p>
 
-      { !isSubscribed && (
+      { ('Notification' in window && !isSubscribed) && (
         <button type="button" className="btn btn-primary mb-4" onClick={subscribeHandler}>
           通知を受け取る
         </button>
