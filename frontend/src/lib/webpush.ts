@@ -13,7 +13,6 @@ function askPermission() {
 export async function askPermissionAndSubscribe() {
   const permission = await askPermission();
 
-  console.log(permission);
   if (permission === 'granted') {
     await navigator.serviceWorker.ready;
     const registration = await navigator.serviceWorker.getRegistration();
@@ -32,7 +31,10 @@ export async function askPermissionAndSubscribe() {
         body: JSON.stringify({subscription}),
       });
     }
+    return true;
   }
+
+  return false;
 }
 
 function urlBase64ToUint8Array(base64String: string) {

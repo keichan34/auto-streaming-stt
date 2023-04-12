@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import classNames from "classnames";
 
 import dayjs from "dayjs";
@@ -96,10 +96,13 @@ function App() {
   const [reload, setReload] = useState(0);
   const [reconnect, setReconnect] = useState(0);
 
-  useLayoutEffect(() => {
-    (async () => {
-      await askPermissionAndSubscribe();
-    })();
+  const [isSubscribed, setIsSubscribed] = useState(localStorage.getItem('isSubscribed') === 'true');
+
+  const subscribeHandler = useCallback<React.MouseEventHandler>(async (event) => {
+    event.preventDefault();
+    await askPermissionAndSubscribe();
+    setIsSubscribed(true);
+    localStorage.setItem('isSubscribed', 'true');
   }, []);
 
   useEffect(() => {
@@ -217,6 +220,12 @@ function App() {
       <p>
         お問い合わせは、<a href="https://keita.blog/about/" rel="noopener noreferer">こちらのフォーム</a> までお願いします。
       </p>
+
+      { !isSubscribed && (
+        <button type="button" className="btn btn-primary mb-4" onClick={subscribeHandler}>
+          通知を受け取る
+        </button>
+      )}
 
       <div className="mb-4">
         <h3>現在の放送</h3>
