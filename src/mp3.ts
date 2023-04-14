@@ -6,7 +6,7 @@ export const rawToMp3 = () => {
     'lame',
     [
       '-r', // expect raw input
-      '-s', '48', // 48khz
+      '-s', '16', // 16khz
       '--bitwidth', '16',
       '--signed',
       '--little-endian',
