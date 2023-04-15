@@ -32,18 +32,27 @@ const runTranscriptionUntilDone: TranscriptionFunc = async function* (audioStrea
       transcriptStream,
     );
 
+    let lastResultEndTime: number = 0;
+
     for await (const _data of transcriptStream) {
       const data = _data as google.cloud.speech.v1.StreamingRecognizeResponse;
-      // console.log(data);
       const result = data.results[0];
       if (!result || !(result.alternatives || [])[0]) {
         // done
         break;
       }
+
       const out: TranscriptionResult = {
         partial: !result.isFinal,
         content: (result.alternatives || [])[0].transcript || "",
+        startTime: lastResultEndTime,
+        endTime: (result.resultEndTime?.seconds! as number * 1000) + (result.resultEndTime?.nanos! / 1000000),
+      };
+
+      if (result.isFinal) {
+        lastResultEndTime = out.endTime;
       }
+
       yield out;
     }
 

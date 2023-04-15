@@ -95,9 +95,12 @@ export default class Transcription extends EventEmitter {
 
       this.emit('streamStarted', { streamId });
 
+      let contentLength = 0;
+
       await Promise.all([
         (async () => {
           const textOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.txt'), 'w');
+          const jsonOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.json'), 'w');
           let lastContent = '';
           for await (const item of runTranscriptionUntilDoneGoogle(audioStream)) {
             if (item.content === '') { continue; }
@@ -109,14 +112,18 @@ export default class Transcription extends EventEmitter {
             if (item.partial) {
               console.log('[Partial]', item.content);
             } else {
+              contentLength += item.content.trim().length;
+
               console.log(item.content);
               textOut.write(item.content + '\n');
+              jsonOut.write(JSON.stringify(item) + '\n');
             }
           }
           textOut.close();
         })(),
         (async () => {
           const textOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.azure.txt'), 'w');
+          const jsonOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.azure.json'), 'w');
           let lastContent = '';
           for await (const item of runTranscriptionUntilDoneAzure(audioStream)) {
             if (item.content === '') { continue; }
@@ -128,6 +135,7 @@ export default class Transcription extends EventEmitter {
             } else {
               console.log('[Azure]', item.content);
               textOut.write(item.content + '\n');
+              jsonOut.write(JSON.stringify(item) + '\n');
             }
           }
           textOut.close();
@@ -136,7 +144,10 @@ export default class Transcription extends EventEmitter {
 
       await soxPromise;
       console.log(`Transcription finished.`);
-      this.emit('streamEnded', { streamId });
+      this.emit('streamEnded', {
+        streamId,
+        contentLength,
+      });
     }
   }
 }

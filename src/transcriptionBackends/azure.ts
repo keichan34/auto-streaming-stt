@@ -1,5 +1,5 @@
 import * as sdk from 'microsoft-cognitiveservices-speech-sdk';
-import { TranscriptionFunc } from '.';
+import { TranscriptionFunc, TranscriptionResult } from '.';
 import { PassThrough } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import fs from 'node:fs';
@@ -38,17 +38,25 @@ const runTranscriptionUntilDone: TranscriptionFunc = async function* (audioStrea
 
   recognizer.recognizing = (_s, e) => {
     if (!e.result.text) return;
-    passthroughStream.write({
+    // offset and duration are in 100ns units, and we have to convert them to ms
+    const result: TranscriptionResult = {
       partial: true,
       content: e.result.text,
-    });
+      startTime: e.result.offset / 10000,
+      endTime: (e.result.offset + e.result.duration) / 10000,
+    };
+    passthroughStream.write(result);
   };
   recognizer.recognized = (_s, e) => {
     if (!e.result.text) return;
-    passthroughStream.write({
+    // e.result.duration
+    const result: TranscriptionResult = {
       partial: false,
       content: e.result.text,
-    });
+      startTime: e.result.offset / 10000,
+      endTime: (e.result.offset + e.result.duration) / 10000,
+    };
+    passthroughStream.write(result);
   };
   recognizer.sessionStopped = () => {
     passthroughStream.end();

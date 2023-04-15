@@ -34,6 +34,8 @@ const runTranscriptionUntilDone: TranscriptionFunc = async function* (audioStrea
           const out: TranscriptionResult = {
             partial: !!result.IsPartial,
             content: (result.Alternatives || [])[0].Transcript || "",
+            startTime: result.StartTime!,
+            endTime: result.EndTime!,
           }
           yield out;
         }

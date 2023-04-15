@@ -9,6 +9,11 @@ export type AudioStreamEvent = {
 export type TranscriptionResult = {
   partial: boolean
   content: string
+
+  /// The start time of the result in milliseconds from the start of the audio stream.
+  startTime: number
+  /// The end time of the result in milliseconds from the start of the audio stream.
+  endTime: number
 }
 
 export type TranscriptionFunc =

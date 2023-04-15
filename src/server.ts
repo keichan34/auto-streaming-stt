@@ -146,11 +146,13 @@ async function serve(transcription: Transcription) {
     currentStreamId = streamId;
   });
 
-  transcription.on('streamEnded', () => {
-    webpush.broadcast(JSON.stringify({
-      type: 'streamEnded',
-      streamId: currentStreamId,
-    }));
+  transcription.on('streamEnded', ({ contentLength }) => {
+    if (contentLength > 0) {
+      webpush.broadcast(JSON.stringify({
+        type: 'streamEnded',
+        streamId: currentStreamId,
+      }));
+    }
     currentStreamId = null;
   });
 }
