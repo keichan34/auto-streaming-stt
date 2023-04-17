@@ -114,6 +114,20 @@ function App() {
   }, [reload]);
 
   useEffect(() => {
+    // reload when the app becomes active
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        setReload((prev) => prev + 1);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, []);
+
+  useEffect(() => {
     let proto = 'ws:'; // http
     if (window.location.protocol === 'https:') {
       proto = 'wss:'; // https

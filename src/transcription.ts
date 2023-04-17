@@ -119,7 +119,10 @@ export default class Transcription extends EventEmitter {
               jsonOut.write(JSON.stringify(item) + '\n');
             }
           }
-          textOut.close();
+          await Promise.all([
+            textOut.close(),
+            jsonOut.close(),
+          ]);
         })(),
         (async () => {
           const textOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.azure.txt'), 'w');
@@ -138,7 +141,10 @@ export default class Transcription extends EventEmitter {
               jsonOut.write(JSON.stringify(item) + '\n');
             }
           }
-          textOut.close();
+          await Promise.all([
+            textOut.close(),
+            jsonOut.close(),
+          ]);
         })(),
       ]);
 
