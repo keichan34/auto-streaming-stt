@@ -66,6 +66,13 @@ app.use('/api/streams', express.static(
       } else {
         res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
       }
+      if (extname === '.mp3') {
+        res.setHeader('Content-Type', 'audio/mpeg');
+      } else if (extname === '.txt') {
+        res.setHeader('Content-Type', 'text/plain');
+      } else if (extname === '.json') {
+        res.setHeader('Content-Type', 'application/json');
+      }
     },
   }
 ));

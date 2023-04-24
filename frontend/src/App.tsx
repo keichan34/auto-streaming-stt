@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import classNames from "classnames";
 
 import dayjs from "dayjs";
@@ -12,13 +12,23 @@ dayjs.locale('ja');
 dayjs.extend(CustomDateFormat);
 dayjs.extend(LocalizedFormat);
 
-type TranscriptItem = { partial: boolean; content: string };
+type TranscriptItem = {
+  partial: boolean;
+  content: string;
+  startTime?: number;
+  endTime?: number;
+};
+
 type LiveTranscription = {
   id: string;
   items: TranscriptItem[];
 }
 
-const TranscriptLineView: React.FC<{items: TranscriptItem[]}> = ({items}) => {
+type TranscriptLineViewProps = {
+  items: TranscriptItem[];
+  audioRef?: React.RefObject<HTMLAudioElement>;
+};
+const TranscriptLineView: React.FC<TranscriptLineViewProps> = ({items, audioRef}) => {
   return (
     <div className="card-text">
       {items.map((item, i) => (
@@ -27,7 +37,18 @@ const TranscriptLineView: React.FC<{items: TranscriptItem[]}> = ({items}) => {
           className={classNames({
             "text-muted": item.partial,
             "mb-0": true,
+            "cursor-pointer": typeof item.startTime !== 'undefined' && typeof item.endTime !== 'undefined',
           })}
+          onClick={(e) => {
+            const audio = audioRef?.current;
+            if (typeof item.startTime === 'undefined' || typeof item.endTime === 'undefined' || !audio) {
+              return;
+            }
+            e.preventDefault();
+            audio.play().then(() => {
+              audio.currentTime = item.startTime! / 1000;
+            });
+          }}
         >
           {item.content}
         </p>
@@ -47,16 +68,40 @@ const LiveTranscriptionView: React.FC<{liveTranscription: LiveTranscription}> = 
   );
 };
 
-const SinglePastTranscription: React.FC<{id: string}> = ({id}) => {
+type SinglePastTranscriptionProps = {
+  id: string;
+  exclusivePlaybackId: string | null;
+  setExclusivePlaybackId: React.Dispatch<React.SetStateAction<string | null>>;
+}
+const SinglePastTranscription: React.FC<SinglePastTranscriptionProps> = ({
+  id,
+  exclusivePlaybackId,
+  setExclusivePlaybackId,
+}) => {
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    if (id !== exclusivePlaybackId) {
+      audioRef.current?.pause();
+    }
+  }, [id, exclusivePlaybackId]);
 
   useEffect(() => {
     (async () => {
-      const resp = await fetch(`/api/streams/${id}.txt`);
-      const data = await resp.text();
-      setTranscript(data.split('\n').map((line) => {
-        return { partial: false, content: line.trim() };
-      }));
+      const resp = await fetch(`/api/streams/${id}.json`);
+      if (resp.ok) {
+        const data = await resp.text();
+        setTranscript(data.split('\n').filter(l => l.trim().length > 0).map((line) => {
+          return JSON.parse(line);
+        }));
+      } else {
+        const resp = await fetch(`/api/streams/${id}.txt`);
+        const data = await resp.text();
+        setTranscript(data.split('\n').filter(l => l.trim().length > 0).map((line) => {
+          return { partial: false, content: line.trim() };
+        }));
+      }
     })();
   }, [id]);
 
@@ -69,20 +114,38 @@ const SinglePastTranscription: React.FC<{id: string}> = ({id}) => {
           controls
           preload="none"
           src={`/api/streams/${id}.mp3`}
+          ref={audioRef}
+          onPlay={() => {
+            // we only want to play one audio at a time, so we'll send a message to the
+            // others to pause.
+            setExclusivePlaybackId(id);
+          }}
         />
-        <TranscriptLineView items={transcript} />
+        <TranscriptLineView
+          items={transcript}
+          audioRef={audioRef}
+        />
       </div>
     </div>
   );
 };
 
 const PastTranscriptions: React.FC<{pastTranscriptionIds: string[]}> = ({pastTranscriptionIds}) => {
+  const [
+    exclusivePlaybackId,
+    setExclusivePlaybackId,
+  ] = useState<string | null>(null);
   return (
     <div>
       <h3>過去の放送</h3>
       <div className="mb-2">
         {pastTranscriptionIds.map((id) => (
-          <SinglePastTranscription key={id} id={id} />
+          <SinglePastTranscription
+            key={id}
+            id={id}
+            exclusivePlaybackId={exclusivePlaybackId}
+            setExclusivePlaybackId={setExclusivePlaybackId}
+          />
         ))}
       </div>
     </div>
