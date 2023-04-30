@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import classNames from "classnames";
 
 import dayjs from "dayjs";
@@ -24,34 +24,87 @@ type LiveTranscription = {
   items: TranscriptItem[];
 }
 
+type TranscriptSingleLineViewProps = {
+  item: TranscriptItem;
+  audioRef?: React.RefObject<HTMLAudioElement>;
+  currentTimestamp: number | null;
+};
+const TranscriptSingleLineView: React.FC<TranscriptSingleLineViewProps> = (props) => {
+  const {
+    item,
+    audioRef,
+    currentTimestamp,
+  } = props;
+
+  const { startTime, endTime } = item;
+
+  const lineIsPlaying = typeof startTime !== 'undefined' && typeof endTime !== 'undefined' && currentTimestamp !== null && startTime <= currentTimestamp && currentTimestamp <= endTime;
+
+  const onClick = useCallback<React.MouseEventHandler<HTMLSpanElement>>((e) => {
+    const audio = audioRef?.current;
+    if (typeof startTime === 'undefined' || typeof endTime === 'undefined' || !audio) {
+      return;
+    }
+    e.preventDefault();
+    audio.play().then(() => {
+      audio.currentTime = startTime! / 1000;
+    });
+  }, [audioRef, endTime, startTime]);
+
+  return (
+    <p
+      className={classNames({
+        "text-muted": item.partial,
+        "mb-0": true,
+      })}
+    >
+      <span
+        className={classNames({
+          "cursor-pointer": typeof item.startTime !== 'undefined' && typeof item.endTime !== 'undefined',
+          "bg-secondary": lineIsPlaying,
+          "text-white": lineIsPlaying,
+        })}
+        onClick={onClick}
+      >
+        {item.content}
+      </span>
+    </p>
+  );
+};
+
 type TranscriptLineViewProps = {
   items: TranscriptItem[];
   audioRef?: React.RefObject<HTMLAudioElement>;
 };
 const TranscriptLineView: React.FC<TranscriptLineViewProps> = ({items, audioRef}) => {
+  const [ currentTimestamp, setCurrentTimestamp ] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    let raf: number;
+    const handler = () => {
+      const audio = audioRef?.current;
+      if (audio && !audio.paused) {
+        setCurrentTimestamp(audio.currentTime * 1000);
+      } else {
+        setCurrentTimestamp(null);
+      }
+      raf = window.requestAnimationFrame(handler);
+    };
+    raf = window.requestAnimationFrame(handler);
+    return () => {
+      window.cancelAnimationFrame(raf);
+    }
+  }, [audioRef]);
+
   return (
     <div className="card-text">
       {items.map((item, i) => (
-        <p
+        <TranscriptSingleLineView
           key={i}
-          className={classNames({
-            "text-muted": item.partial,
-            "mb-0": true,
-            "cursor-pointer": typeof item.startTime !== 'undefined' && typeof item.endTime !== 'undefined',
-          })}
-          onClick={(e) => {
-            const audio = audioRef?.current;
-            if (typeof item.startTime === 'undefined' || typeof item.endTime === 'undefined' || !audio) {
-              return;
-            }
-            e.preventDefault();
-            audio.play().then(() => {
-              audio.currentTime = item.startTime! / 1000;
-            });
-          }}
-        >
-          {item.content}
-        </p>
+          item={item}
+          audioRef={audioRef}
+          currentTimestamp={currentTimestamp}
+        />
       ))}
     </div>
   );
