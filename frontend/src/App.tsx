@@ -206,6 +206,8 @@ const PastTranscriptions: React.FC<{pastTranscriptionIds: string[]}> = ({pastTra
 };
 
 function App() {
+  const isRunningStandalone = window.matchMedia('(display-mode: standalone)').matches;
+
   const [backfillTranscriptionId, setBackfillTranscriptionId] = useState<string | null>(null);
   const [liveTranscription, setLiveTranscription] = useState<LiveTranscription | null>(null);
   const [pastTranscriptionIds, setPastTranscriptionIds] = useState<string[]>([]);
@@ -288,26 +290,33 @@ function App() {
         });
       }
     });
+
     ws.addEventListener('close', () => {
-      const delay = exponentialBackoffMs(reconnect);
+      const delay = exponentialBackoffMs(reconnect, 300);
       setTimeout(() => {
         setReconnect((prev) => prev + 1);
       }, delay);
     });
 
+    let pingTimeout: number;
     const pingFunc = () => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "ping" }));
       }
-      window.setTimeout(pingFunc, 30_000);
+      pingTimeout = window.setTimeout(pingFunc, 30_000);
     };
-    let pingTimeout = window.setTimeout(pingFunc, 30_000);
+
+    ws.addEventListener('open', () => {
+      pingFunc();
+    });
 
     return () => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.close();
       }
-      window.clearTimeout(pingTimeout);
+      if (typeof pingTimeout !== 'undefined') {
+        window.clearTimeout(pingTimeout);
+      }
     };
   }, [reconnect]);
 
@@ -351,11 +360,17 @@ function App() {
         お問い合わせは、<a href="https://keita.blog/about/" rel="noopener noreferer">こちらのフォーム</a> までお願いします。
       </p>
 
-      { ('Notification' in window && !isSubscribed) && (
+      { !isRunningStandalone && (
+        <p>
+          このサイトをホーム画面に追加すると、通知を受け取ることができます。
+        </p>
+      )}
+
+      { ('Notification' in window) && (!isSubscribed && (
         <button type="button" className="btn btn-primary mb-4" onClick={subscribeHandler}>
           通知を受け取る
         </button>
-      )}
+      )) }
 
       <div className="mb-4">
         <h3>現在の放送</h3>
