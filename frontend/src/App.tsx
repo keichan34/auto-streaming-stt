@@ -248,7 +248,7 @@ function App() {
     if (window.location.protocol === 'https:') {
       proto = 'wss:'; // https
     }
-    const ws = new WebSocket(`${proto}//${window.location.host}/ws`);
+    const ws = new WebSocket(`${proto}//${window.location.host}/api/ws`);
     ws.addEventListener('message', (event) => {
       const message = JSON.parse(event.data);
       if (message.type === "streamStarted") {
@@ -304,7 +304,7 @@ function App() {
     let pingTimeout = window.setTimeout(pingFunc, 30_000);
 
     return () => {
-      if (ws.readyState !== WebSocket.CLOSED && ws.readyState !== WebSocket.CLOSING) {
+      if (ws.readyState === WebSocket.OPEN) {
         ws.close();
       }
       window.clearTimeout(pingTimeout);

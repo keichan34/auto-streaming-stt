@@ -125,7 +125,7 @@ app.post('/api/push/subscribe', (req, res) => {
 
 server.on('upgrade', (req, socket, head) => {
   const { pathname } = url.parse(req.url || '');
-  if (pathname === '/ws') {
+  if (pathname === '/api/ws' || pathname === '/ws') {
     wss.handleUpgrade(req, socket, head, (ws) => {
       wss.emit('connection', ws, req);
     });
