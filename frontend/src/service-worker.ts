@@ -84,8 +84,10 @@ self.addEventListener('push', function(event) {
     const msg = event.data.json();
     console.log('This push event has data: ', event.data.json());
 
-    if (msg.type === 'streamEnded') {
-      self.registration.showNotification('放送がありました');
+    if (msg.type === 'streamStarted') {
+      self.registration.showNotification('放送が始まりました');
+    } else if (msg.type === 'streamEnded') {
+      self.registration.showNotification('放送が終わりました');
     }
   } else {
     console.log('This push event has no data.');

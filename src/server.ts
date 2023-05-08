@@ -149,8 +149,20 @@ async function serve(transcription: Transcription) {
     });
   }
 
+  let sentNotification = false;
   transcription.on('streamStarted', ({ streamId }) => {
+    sentNotification = false;
     currentStreamId = streamId;
+  });
+
+  transcription.on('transcription', () => {
+    if (!sentNotification) {
+      sentNotification = true;
+      webpush.broadcast(JSON.stringify({
+        type: 'streamStarted',
+        streamId: currentStreamId,
+      }));
+    }
   });
 
   transcription.on('streamEnded', ({ contentLength }) => {
