@@ -124,28 +124,28 @@ export default class Transcription extends EventEmitter {
             jsonOut.close(),
           ]);
         })(),
-        (async () => {
-          const textOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.azure.txt'), 'w');
-          const jsonOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.azure.json'), 'w');
-          let lastContent = '';
-          for await (const item of runTranscriptionUntilDoneAzure(audioStream)) {
-            if (item.content === '') { continue; }
-            if (item.partial && item.content === lastContent) { continue; }
-            lastContent = item.content;
+        // (async () => {
+        //   const textOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.azure.txt'), 'w');
+        //   const jsonOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.azure.json'), 'w');
+        //   let lastContent = '';
+        //   for await (const item of runTranscriptionUntilDoneAzure(audioStream)) {
+        //     if (item.content === '') { continue; }
+        //     if (item.partial && item.content === lastContent) { continue; }
+        //     lastContent = item.content;
 
-            if (item.partial) {
-              console.log('[Azure Partial]', item.content);
-            } else {
-              console.log('[Azure]', item.content);
-              textOut.write(item.content + '\n');
-              jsonOut.write(JSON.stringify(item) + '\n');
-            }
-          }
-          await Promise.all([
-            textOut.close(),
-            jsonOut.close(),
-          ]);
-        })(),
+        //     if (item.partial) {
+        //       console.log('[Azure Partial]', item.content);
+        //     } else {
+        //       console.log('[Azure]', item.content);
+        //       textOut.write(item.content + '\n');
+        //       jsonOut.write(JSON.stringify(item) + '\n');
+        //     }
+        //   }
+        //   await Promise.all([
+        //     textOut.close(),
+        //     jsonOut.close(),
+        //   ]);
+        // })(),
       ]);
 
       await soxPromise;

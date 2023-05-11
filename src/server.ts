@@ -155,7 +155,7 @@ async function serve(transcription: Transcription) {
     currentStreamId = streamId;
   });
 
-  transcription.on('transcription', () => {
+  transcription.on('transcript', () => {
     if (!sentNotification) {
       sentNotification = true;
       webpush.broadcast(JSON.stringify({
