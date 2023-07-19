@@ -79,81 +79,90 @@ function getAudioStream() {
 }
 
 export default class Transcription extends EventEmitter {
+  private async oneLoop() {
+    const {
+      audioStream,
+      soxPromise,
+      audioStarted,
+    } = getAudioStream();
+
+    const streamId = await audioStarted;
+    console.log(`Audio detected, starting transcription... (streamId=${streamId})`);
+
+    this.emit('streamStarted', { streamId });
+
+    let contentLength = 0;
+
+    await Promise.all([
+      (async () => {
+        const textOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.txt'), 'w');
+        const jsonOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.json'), 'w');
+        let lastContent = '';
+        for await (const item of runTranscriptionUntilDoneGoogle(audioStream)) {
+          if (item.content === '') { continue; }
+          if (item.partial && item.content === lastContent) { continue; }
+          lastContent = item.content;
+
+          this.emit('transcript', { streamId, item });
+
+          if (item.partial) {
+            console.log('[Partial]', item.content);
+          } else {
+            contentLength += item.content.trim().length;
+
+            console.log(item.content);
+            textOut.write(item.content + '\n');
+            jsonOut.write(JSON.stringify(item) + '\n');
+          }
+        }
+        await Promise.all([
+          textOut.close(),
+          jsonOut.close(),
+        ]);
+      })(),
+      // (async () => {
+      //   const textOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.azure.txt'), 'w');
+      //   const jsonOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.azure.json'), 'w');
+      //   let lastContent = '';
+      //   for await (const item of runTranscriptionUntilDoneAzure(audioStream)) {
+      //     if (item.content === '') { continue; }
+      //     if (item.partial && item.content === lastContent) { continue; }
+      //     lastContent = item.content;
+
+      //     if (item.partial) {
+      //       console.log('[Azure Partial]', item.content);
+      //     } else {
+      //       console.log('[Azure]', item.content);
+      //       textOut.write(item.content + '\n');
+      //       jsonOut.write(JSON.stringify(item) + '\n');
+      //     }
+      //   }
+      //   await Promise.all([
+      //     textOut.close(),
+      //     jsonOut.close(),
+      //   ]);
+      // })(),
+    ]);
+
+    await soxPromise;
+    console.log(`Transcription finished.`);
+    this.emit('streamEnded', {
+      streamId,
+      contentLength,
+    });
+  }
+
   async start() {
     await fs.promises.mkdir(OUTPUT_DIR, { recursive: true });
 
     console.log('Starting...');
     for (;;) {
-      const {
-        audioStream,
-        soxPromise,
-        audioStarted,
-      } = getAudioStream();
-
-      const streamId = await audioStarted;
-      console.log(`Audio detected, starting transcription... (streamId=${streamId})`);
-
-      this.emit('streamStarted', { streamId });
-
-      let contentLength = 0;
-
-      await Promise.all([
-        (async () => {
-          const textOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.txt'), 'w');
-          const jsonOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.json'), 'w');
-          let lastContent = '';
-          for await (const item of runTranscriptionUntilDoneGoogle(audioStream)) {
-            if (item.content === '') { continue; }
-            if (item.partial && item.content === lastContent) { continue; }
-            lastContent = item.content;
-
-            this.emit('transcript', { streamId, item });
-
-            if (item.partial) {
-              console.log('[Partial]', item.content);
-            } else {
-              contentLength += item.content.trim().length;
-
-              console.log(item.content);
-              textOut.write(item.content + '\n');
-              jsonOut.write(JSON.stringify(item) + '\n');
-            }
-          }
-          await Promise.all([
-            textOut.close(),
-            jsonOut.close(),
-          ]);
-        })(),
-        // (async () => {
-        //   const textOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.azure.txt'), 'w');
-        //   const jsonOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.azure.json'), 'w');
-        //   let lastContent = '';
-        //   for await (const item of runTranscriptionUntilDoneAzure(audioStream)) {
-        //     if (item.content === '') { continue; }
-        //     if (item.partial && item.content === lastContent) { continue; }
-        //     lastContent = item.content;
-
-        //     if (item.partial) {
-        //       console.log('[Azure Partial]', item.content);
-        //     } else {
-        //       console.log('[Azure]', item.content);
-        //       textOut.write(item.content + '\n');
-        //       jsonOut.write(JSON.stringify(item) + '\n');
-        //     }
-        //   }
-        //   await Promise.all([
-        //     textOut.close(),
-        //     jsonOut.close(),
-        //   ]);
-        // })(),
-      ]);
-
-      await soxPromise;
-      console.log(`Transcription finished.`);
-      this.emit('streamEnded', {
-        streamId,
-        contentLength,
-      });
+      try {
+        await this.oneLoop();
+      } catch (err) {
+        console.error('Unexpected error, restarting...');
+        console.error(err);
+      }
     }
   }
 }
