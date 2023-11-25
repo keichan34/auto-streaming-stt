@@ -9,8 +9,8 @@ import { rawToMp3 } from "./mp3";
 import EventEmitter from "node:events";
 
 import runTranscriptionUntilDoneGoogle from './transcriptionBackends/google';
-import runTranscriptionUntilDoneAzure from './transcriptionBackends/azure';
-import { AudioStreamEvent } from './transcriptionBackends';
+// import runTranscriptionUntilDoneAzure from './transcriptionBackends/azure';
+// import { AudioStreamEvent } from './transcriptionBackends';
 
 const OUTPUT_DIR = process.env['OUTPUT_DIR'] || path.join(process.cwd(), 'out');
 
@@ -98,21 +98,29 @@ export default class Transcription extends EventEmitter {
         const textOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.txt'), 'w');
         const jsonOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.json'), 'w');
         let lastContent = '';
-        for await (const item of runTranscriptionUntilDoneGoogle(audioStream)) {
-          if (item.content === '') { continue; }
-          if (item.partial && item.content === lastContent) { continue; }
-          lastContent = item.content;
+        let retryCount = 0;
+        while (retryCount < 3) {
+          try {
+            for await (const item of runTranscriptionUntilDoneGoogle(audioStream)) {
+              if (item.content === '') { continue; }
+              if (item.partial && item.content === lastContent) { continue; }
+              lastContent = item.content;
 
-          this.emit('transcript', { streamId, item });
+              this.emit('transcript', { streamId, item });
 
-          if (item.partial) {
-            console.log('[Partial]', item.content);
-          } else {
-            contentLength += item.content.trim().length;
+              if (item.partial) {
+                console.log('[Partial]', item.content);
+              } else {
+                contentLength += item.content.trim().length;
 
-            console.log(item.content);
-            textOut.write(item.content + '\n');
-            jsonOut.write(JSON.stringify(item) + '\n');
+                console.log(item.content);
+                textOut.write(item.content + '\n');
+                jsonOut.write(JSON.stringify(item) + '\n');
+              }
+            }
+          } catch (err) {
+            console.error('error in Google transcription:', err);
+            retryCount++;
           }
         }
         await Promise.all([
