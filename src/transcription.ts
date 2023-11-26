@@ -98,8 +98,8 @@ export default class Transcription extends EventEmitter {
         const textOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.txt'), 'w');
         const jsonOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.json'), 'w');
         let lastContent = '';
-        let retryCount = 0;
-        while (retryCount < 3) {
+        let retryCount = 0, done = false;
+        while (retryCount < 3 && !done) {
           try {
             for await (const item of runTranscriptionUntilDoneGoogle(audioStream)) {
               if (item.content === '') { continue; }
@@ -118,6 +118,7 @@ export default class Transcription extends EventEmitter {
                 jsonOut.write(JSON.stringify(item) + '\n');
               }
             }
+            done = true;
           } catch (err) {
             console.error('error in Google transcription:', err);
             retryCount++;
@@ -150,9 +151,9 @@ export default class Transcription extends EventEmitter {
       //     jsonOut.close(),
       //   ]);
       // })(),
+      soxPromise,
     ]);
 
-    await soxPromise;
     console.log(`Transcription finished.`);
     this.emit('streamEnded', {
       streamId,
