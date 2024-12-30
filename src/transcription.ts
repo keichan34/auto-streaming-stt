@@ -9,6 +9,8 @@ import { rawToMp3 } from "./mp3";
 import EventEmitter from "node:events";
 
 import runTranscriptionUntilDoneGoogle from './transcriptionBackends/google';
+import { queue, QueueObject } from 'async';
+import { createSummary } from './summarizer';
 // import runTranscriptionUntilDoneAzure from './transcriptionBackends/azure';
 // import { AudioStreamEvent } from './transcriptionBackends';
 
@@ -23,7 +25,12 @@ const runSox = (outStream: PassThrough) => new Promise<void>((resolve, reject) =
   }
   const soxProcess = spawn(soxPath, [
     ...inputDef,
-    '-c', '1', '-b', '16', '-r', '16000', '-e', 'signed-integer', '-L',
+    // the output parameters
+      '-c', '1', // one channel
+      '-b', '16', // 16 bits
+      '-r', '16000', // 16kHz sample rate
+      '-e', 'signed-integer', // signed integer encoding
+      '-L', // little endian
     '-t', 'raw', '-',
     'silence', // silence filter
     '1', '0.5', '1%', // start recording when 1 period of 0.5s is above 1% (0.5s)
@@ -78,7 +85,36 @@ function getAudioStream() {
   };
 }
 
-export default class Transcription extends EventEmitter {
+export interface TranscriptionEvents {
+  streamStarted: { streamId: string };
+  transcript: { streamId: string, item: any };
+  streamEnded: { streamId: string, contentLength: number };
+  summaryAvailable: { streamId: string, summary: string };
+}
+
+declare interface Transcription {
+  on<U extends keyof TranscriptionEvents>(
+    event: U, listener: (args: TranscriptionEvents[U]) => void
+  ): this;
+
+  emit<U extends keyof TranscriptionEvents>(
+    event: U, args: TranscriptionEvents[U]
+  ): boolean;
+}
+
+class Transcription extends EventEmitter {
+  summarizerQueue: QueueObject<{streamId: string}>;
+
+  constructor() {
+    super();
+    this.summarizerQueue = queue(async (task) => {
+      const { streamId } = task;
+      const text = await fs.promises.readFile(path.join(OUTPUT_DIR, streamId + '.txt'), 'utf-8');
+      const summary = await createSummary(text);
+      this.emit('summaryAvailable', { streamId, summary });
+    }, 1);
+  }
+
   private async oneLoop() {
     const {
       audioStream,
@@ -159,6 +195,7 @@ export default class Transcription extends EventEmitter {
       streamId,
       contentLength,
     });
+    this.summarizerQueue.push({ streamId });
   }
 
   async start() {
@@ -175,3 +212,5 @@ export default class Transcription extends EventEmitter {
     }
   }
 }
+
+export default Transcription;

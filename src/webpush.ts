@@ -55,10 +55,33 @@ export async function subscribe(subscription: PushSubscription) {
 }
 
 export async function broadcast(message: string) {
-  console.log("[webpush] broadcasting: ", message)
+  console.log("[webpush] broadcasting: ", message);
+  let subscriptionsModified = false;
   const q = queue(async (subscription: PushSubscription) => {
-    await webpush.sendNotification(subscription, message);
+    try {
+      await webpush.sendNotification(subscription, message);
+    } catch (err) {
+      if (err instanceof webpush.WebPushError) {
+        if (err.statusCode === 410) {
+          // the subscription is no longer valid, so we'll remove it from our list
+          subscriptionEndpoints.delete(subscription.endpoint);
+          subscriptions.splice(subscriptions.findIndex((v) => v.endpoint === subscription.endpoint), 1);
+          subscriptionsModified = true;
+          return;
+        }
+      }
+      throw err;
+    }
   }, 10);
   q.push(subscriptions);
   await q.drain();
+
+  // if we removed any subscriptions, we need to write the new list to disk
+  if (subscriptionsModified) {
+    const f = await openSubscriptions();
+    await f.truncate(0);
+    for (const subscription of subscriptions) {
+      await f.write(JSON.stringify(subscription) + "\n");
+    }
+  }
 }

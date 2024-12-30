@@ -7,6 +7,8 @@ import LocalizedFormat from "dayjs/plugin/localizedFormat";
 import 'dayjs/locale/ja';
 import { exponentialBackoffMs } from "./lib/utils";
 import { askPermissionAndSubscribe } from "./lib/webpush";
+import { useAtom, useSetAtom } from "jotai";
+import { exclusivePlaybackIdAtom, focusMessageIdAtom } from "./atoms";
 
 dayjs.locale('ja');
 dayjs.extend(CustomDateFormat);
@@ -123,16 +125,25 @@ const LiveTranscriptionView: React.FC<{liveTranscription: LiveTranscription}> = 
 
 type SinglePastTranscriptionProps = {
   id: string;
-  exclusivePlaybackId: string | null;
-  setExclusivePlaybackId: React.Dispatch<React.SetStateAction<string | null>>;
 }
 const SinglePastTranscription: React.FC<SinglePastTranscriptionProps> = ({
   id,
-  exclusivePlaybackId,
-  setExclusivePlaybackId,
 }) => {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [exclusivePlaybackId, setExclusivePlaybackId] = useAtom(exclusivePlaybackIdAtom);
+  const [focusMessageId, setFocusMessageId] = useAtom(focusMessageIdAtom);
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
   const audioRef = useRef<HTMLAudioElement>(null);
+
+  useLayoutEffect(() => {
+    if (id !== focusMessageId) {
+      return;
+    }
+    wrapperRef.current?.scrollIntoView({
+      block: 'center',
+    });
+    setFocusMessageId(undefined);
+  }, [id, focusMessageId, setFocusMessageId]);
 
   useEffect(() => {
     if (id !== exclusivePlaybackId) {
@@ -159,7 +170,7 @@ const SinglePastTranscription: React.FC<SinglePastTranscriptionProps> = ({
   }, [id]);
 
   return (
-    <div className="card mb-2">
+    <div className="card mb-2" ref={wrapperRef}>
       <div className="card-body">
         <h5 className="card-title">{dayjs(id, "YYYYMMDDHHmmss").format("LL(dddd) LT")}</h5>
         <audio
@@ -184,10 +195,6 @@ const SinglePastTranscription: React.FC<SinglePastTranscriptionProps> = ({
 };
 
 const PastTranscriptions: React.FC<{pastTranscriptionIds: string[]}> = ({pastTranscriptionIds}) => {
-  const [
-    exclusivePlaybackId,
-    setExclusivePlaybackId,
-  ] = useState<string | null>(null);
   return (
     <div>
       <h3>過去の放送</h3>
@@ -196,8 +203,6 @@ const PastTranscriptions: React.FC<{pastTranscriptionIds: string[]}> = ({pastTra
           <SinglePastTranscription
             key={id}
             id={id}
-            exclusivePlaybackId={exclusivePlaybackId}
-            setExclusivePlaybackId={setExclusivePlaybackId}
           />
         ))}
       </div>
@@ -211,6 +216,7 @@ function App() {
   const [backfillTranscriptionId, setBackfillTranscriptionId] = useState<string | null>(null);
   const [liveTranscription, setLiveTranscription] = useState<LiveTranscription | null>(null);
   const [pastTranscriptionIds, setPastTranscriptionIds] = useState<string[]>([]);
+  const setFocusMessageId = useSetAtom(focusMessageIdAtom);
   const [reload, setReload] = useState(0);
   const [reconnect, setReconnect] = useState(0);
 
@@ -230,6 +236,20 @@ function App() {
       setPastTranscriptionIds(data);
     })();
   }, [reload]);
+
+  useEffect(() => {
+    const messageHandler = (event: MessageEvent) => {
+      console.log('message received', event.data);
+      if (event.data.type === 'open-notif') {
+        const id = event.data.id;
+        setFocusMessageId(id);
+      }
+    };
+    navigator.serviceWorker.addEventListener('message', messageHandler);
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', messageHandler);
+    };
+  }, [setFocusMessageId]);
 
   useEffect(() => {
     // reload when the app becomes active
@@ -354,7 +374,7 @@ function App() {
       <p>
         ご注意: このサイトは公式なものではありません。あくまで個人が実験的に作ったものであり、いつでも停止する可能性もあります。また、内容については不完全な可能性もあり、文字起こしは自動で生成したものであり、正確性については保証できません。
         <br />
-        このサイトの仕組みや背景については、<a href="https://keita.blog/?p=3478" rel="noopener noreferer">こちらの記事</a> をご覧ください。
+        このサイトの仕組みや背景については、<a href="https://keita.blog/2023/03/26/%E4%B9%85%E3%81%97%E3%81%B6%E3%82%8A%E3%81%AB%E5%9C%B0%E5%9B%B3%E3%81%A8%E9%96%A2%E4%BF%82%E3%81%AA%E3%81%84%E3%82%82%E3%81%AE%E3%82%92%E4%BD%9C%E3%82%8A%E3%81%BE%E3%81%97%E3%81%9F/" rel="noopener noreferer">こちらの記事</a> をご覧ください。
       </p>
       <p>
         お問い合わせは、<a href="https://keita.blog/about/" rel="noopener noreferer">こちらのフォーム</a> までお願いします。
@@ -381,7 +401,9 @@ function App() {
         }
       </div>
 
-      <PastTranscriptions pastTranscriptionIds={pastTranscriptionIds} />
+      <PastTranscriptions
+        pastTranscriptionIds={pastTranscriptionIds}
+      />
     </div>
   );
 }

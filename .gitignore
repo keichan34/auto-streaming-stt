@@ -2,6 +2,7 @@ node_modules
 out
 dist
 frontend/build
+frontend_/build
 .envrc
 upload
 data

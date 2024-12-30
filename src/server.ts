@@ -6,7 +6,7 @@ import fs from 'node:fs';
 
 import { WebSocket, WebSocketServer } from 'ws';
 
-import Transcription from './transcription';
+import Transcription, { TranscriptionEvents } from './transcription';
 import * as webpush from './webpush';
 
 const app = express();
@@ -139,7 +139,7 @@ async function serve(transcription: Transcription) {
     console.log(`Listening on port ${process.env.PORT || '3000'}`);
   });
 
-  const events = ['streamStarted', 'transcript', 'streamEnded'];
+  const events = ['streamStarted', 'transcript', 'streamEnded', 'summaryAvailable'] as const;
   for (const event of events) {
     transcription.on(event, (data) => {
       broadcastMessage(JSON.stringify({
@@ -155,24 +155,32 @@ async function serve(transcription: Transcription) {
     currentStreamId = streamId;
   });
 
-  transcription.on('transcript', () => {
+  transcription.on('transcript', ({ streamId }) => {
     if (!sentNotification) {
       sentNotification = true;
       webpush.broadcast(JSON.stringify({
         type: 'streamStarted',
-        streamId: currentStreamId,
+        streamId,
       }));
     }
   });
 
-  transcription.on('streamEnded', ({ contentLength }) => {
+  transcription.on('streamEnded', ({ streamId, contentLength }) => {
     if (contentLength > 0) {
       webpush.broadcast(JSON.stringify({
         type: 'streamEnded',
-        streamId: currentStreamId,
+        streamId,
       }));
     }
     currentStreamId = null;
+  });
+
+  transcription.on('summaryAvailable', ({ streamId, summary }) => {
+    webpush.broadcast(JSON.stringify({
+      type: 'summary',
+      streamId,
+      summary,
+    }));
   });
 }
 
