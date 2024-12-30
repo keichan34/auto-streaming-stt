@@ -54,7 +54,7 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: frontend
-          path: frontend/build/
+          path: frontend/dist/
 
   deploy:
     if: github.ref == 'refs/heads/main'
