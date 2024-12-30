@@ -31,7 +31,7 @@ export async function createSummary(text: string): Promise<string> {
   const response = await client.chat.completions.create(params);
   const out = response.choices[0].message.content;
   if (!out) {
-    throw new Error('Failed to generate summary');
+    throw new Error(`Failed to generate summary: ${JSON.stringify(response)}`);
   }
   return out;
 }

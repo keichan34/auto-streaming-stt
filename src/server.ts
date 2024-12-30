@@ -164,19 +164,19 @@ async function serve(transcription: Transcription) {
   transcription.on('transcript', ({ streamId }) => {
     if (!sentNotification) {
       sentNotification = true;
-      webpush.broadcast(JSON.stringify({
-        type: 'streamStarted',
-        streamId,
-      }));
+      // webpush.broadcast(JSON.stringify({
+      //   type: 'streamStarted',
+      //   streamId,
+      // }));
     }
   });
 
   transcription.on('streamEnded', ({ streamId, contentLength }) => {
     if (contentLength > 0) {
-      webpush.broadcast(JSON.stringify({
-        type: 'streamEnded',
-        streamId,
-      }));
+      // webpush.broadcast(JSON.stringify({
+      //   type: 'streamEnded',
+      //   streamId,
+      // }));
     }
     currentStreamId = null;
   });

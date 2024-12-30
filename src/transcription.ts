@@ -114,6 +114,9 @@ class Transcription extends EventEmitter {
       this.emit('summary', { streamId, summary });
       await fs.promises.writeFile(path.join(OUTPUT_DIR, streamId + '.summary.txt'), summary);
     }, 1);
+    this.summarizerQueue.error((err, {streamId}) => {
+      console.error(`Error in summarizer for ${streamId}:`, err);
+    });
   }
 
   private async oneLoop() {
@@ -196,7 +199,9 @@ class Transcription extends EventEmitter {
       streamId,
       contentLength,
     });
-    this.summarizerQueue.push({ streamId });
+    if (contentLength > 0) {
+      this.summarizerQueue.push({ streamId });
+    }
   }
 
   async start() {
