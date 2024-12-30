@@ -43,10 +43,13 @@ export default defineConfig({
   ],
   server: {
     proxy: {
-      '/api/streams': {
-        target: "https://bousai.yakushima.blog",
-        changeOrigin: true,
-      }
+      '/api': {
+        target: "http://localhost:3000",
+      },
+      '/api/ws': {
+        target: "ws://localhost:3000",
+        ws: true,
+      },
     }
   }
 })

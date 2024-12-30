@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import classNames from "classnames";
+import Markdown from 'react-markdown';
 
 import dayjs from "dayjs";
 import CustomDateFormat from "dayjs/plugin/customParseFormat";
@@ -7,8 +8,8 @@ import LocalizedFormat from "dayjs/plugin/localizedFormat";
 import 'dayjs/locale/ja';
 import { exponentialBackoffMs } from "./lib/utils";
 import { askPermissionAndSubscribe } from "./lib/webpush";
-import { useAtom, useSetAtom } from "jotai";
-import { exclusivePlaybackIdAtom, focusMessageIdAtom } from "./atoms";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { exclusivePlaybackIdAtom, focusMessageIdAtom, loadTranscriptionBeforeIdAtom, pastTranscriptionIdsAtom, summariesAtom } from "./atoms";
 
 dayjs.locale('ja');
 dayjs.extend(CustomDateFormat);
@@ -133,6 +134,8 @@ const SinglePastTranscription: React.FC<SinglePastTranscriptionProps> = ({
   const [exclusivePlaybackId, setExclusivePlaybackId] = useAtom(exclusivePlaybackIdAtom);
   const [focusMessageId, setFocusMessageId] = useAtom(focusMessageIdAtom);
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
+  const [summary, setSummary] = useState<string | undefined>(undefined);
+  const summaries = useAtomValue(summariesAtom);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   useLayoutEffect(() => {
@@ -167,12 +170,32 @@ const SinglePastTranscription: React.FC<SinglePastTranscriptionProps> = ({
         }));
       }
     })();
+
+    (async () => {
+      const resp = await fetch(`/api/streams/${id}.summary.txt`);
+      if (resp.ok) {
+        const data = await resp.text();
+        setSummary(data);
+      }
+    })();
   }, [id]);
+
+  useEffect(() => {
+    if (summaries[id]) {
+      setSummary(summaries[id]);
+    }
+  }, [id, summaries]);
 
   return (
     <div className="card mb-2" ref={wrapperRef}>
       <div className="card-body">
         <h5 className="card-title">{dayjs(id, "YYYYMMDDHHmmss").format("LL(dddd) LT")}</h5>
+        { summary && (
+          <div className="card-text mt-3">
+            <h4>概要</h4>
+            <Markdown>{summary}</Markdown>
+          </div>
+        )}
         <audio
           className="my-2 w-100"
           controls
@@ -194,16 +217,38 @@ const SinglePastTranscription: React.FC<SinglePastTranscriptionProps> = ({
   );
 };
 
-const PastTranscriptions: React.FC<{pastTranscriptionIds: string[]}> = ({pastTranscriptionIds}) => {
+const PastTranscriptions: React.FC = () => {
+  const pastTranscriptionIds = useAtomValue(pastTranscriptionIdsAtom);
+  const lastTranscriptionId = pastTranscriptionIds[pastTranscriptionIds.length - 1];
+  const lastTranscriptionRef = useRef<HTMLDivElement>(null);
+  const setLoadTranscriptionBeforeId = useSetAtom(loadTranscriptionBeforeIdAtom);
+
+  useLayoutEffect(() => {
+    if (!lastTranscriptionRef.current) { return; }
+    const observer = new IntersectionObserver((entries) => {
+      // when the last transcription is in view, load more
+      if (entries[0].isIntersecting) {
+        setLoadTranscriptionBeforeId(lastTranscriptionId);
+      }
+    }, {
+      threshold: 0.1,
+    });
+    observer.observe(lastTranscriptionRef.current);
+    return () => {
+      observer.disconnect();
+    };
+  }, [lastTranscriptionId, setLoadTranscriptionBeforeId]);
+
   return (
     <div>
       <h3>過去の放送</h3>
       <div className="mb-2">
         {pastTranscriptionIds.map((id) => (
-          <SinglePastTranscription
-            key={id}
-            id={id}
-          />
+          <div key={id} ref={id === lastTranscriptionId ? lastTranscriptionRef : undefined}>
+            <SinglePastTranscription
+              id={id}
+            />
+          </div>
         ))}
       </div>
     </div>
@@ -215,8 +260,10 @@ function App() {
 
   const [backfillTranscriptionId, setBackfillTranscriptionId] = useState<string | null>(null);
   const [liveTranscription, setLiveTranscription] = useState<LiveTranscription | null>(null);
-  const [pastTranscriptionIds, setPastTranscriptionIds] = useState<string[]>([]);
+  const setPastTranscriptionIds = useSetAtom(pastTranscriptionIdsAtom);
+  const loadTranscriptionBeforeId = useAtomValue(loadTranscriptionBeforeIdAtom);
   const setFocusMessageId = useSetAtom(focusMessageIdAtom);
+  const setSummaries = useSetAtom(summariesAtom);
   const [reload, setReload] = useState(0);
   const [reconnect, setReconnect] = useState(0);
 
@@ -232,10 +279,23 @@ function App() {
   useEffect(() => {
     (async () => {
       const resp = await fetch(`/api/streams/`);
-      const data = await resp.json();
-      setPastTranscriptionIds(data);
+      const data = await resp.json() as string[];
+      setPastTranscriptionIds((oldData) => {
+        return [...new Set([...oldData, ...data])];
+      });
     })();
-  }, [reload]);
+  }, [reload, setPastTranscriptionIds]);
+  useEffect(() => {
+    (async () => {
+      const resp = await fetch(`/api/streams/?before=${loadTranscriptionBeforeId}`);
+      const data = await resp.json() as string[];
+      setPastTranscriptionIds((oldData) => {
+        const newData = [...new Set([...oldData, ...data])];
+        newData.sort((a, b) => (a > b ? -1 : 1));
+        return newData;
+      });
+    })();
+  }, [loadTranscriptionBeforeId, setPastTranscriptionIds]);
 
   useEffect(() => {
     const messageHandler = (event: MessageEvent) => {
@@ -281,7 +341,12 @@ function App() {
       } else if (message.type === "streamEnded") {
         setLiveTranscription(null);
         setBackfillTranscriptionId(null);
-        setReload((prev) => prev + 1);
+        // setReload((prev) => prev + 1);
+        setPastTranscriptionIds((oldData) => {
+          const data = [...new Set([...oldData, message.data.streamId])];
+          data.sort((a, b) => (a > b ? -1 : 1));
+          return data;
+        });
       } else if (message.type === "transcript") {
         setLiveTranscription((prev) => {
           if (!prev) {
@@ -306,6 +371,13 @@ function App() {
           return {
             id: message.data.streamId,
             items: newItems,
+          };
+        });
+      } else if (message.type === "summary") {
+        setSummaries((prev) => {
+          return {
+            ...prev,
+            [message.data.streamId]: message.data.summary,
           };
         });
       }
@@ -338,7 +410,7 @@ function App() {
         window.clearTimeout(pingTimeout);
       }
     };
-  }, [reconnect]);
+  }, [reconnect, setSummaries]);
 
   useEffect(() => {
     (async () => {
@@ -401,9 +473,7 @@ function App() {
         }
       </div>
 
-      <PastTranscriptions
-        pastTranscriptionIds={pastTranscriptionIds}
-      />
+      <PastTranscriptions />
     </div>
   );
 }

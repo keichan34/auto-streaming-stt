@@ -89,7 +89,7 @@ export interface TranscriptionEvents {
   streamStarted: { streamId: string };
   transcript: { streamId: string, item: any };
   streamEnded: { streamId: string, contentLength: number };
-  summaryAvailable: { streamId: string, summary: string };
+  summary: { streamId: string, summary: string };
 }
 
 declare interface Transcription {
@@ -111,7 +111,8 @@ class Transcription extends EventEmitter {
       const { streamId } = task;
       const text = await fs.promises.readFile(path.join(OUTPUT_DIR, streamId + '.txt'), 'utf-8');
       const summary = await createSummary(text);
-      this.emit('summaryAvailable', { streamId, summary });
+      this.emit('summary', { streamId, summary });
+      await fs.promises.writeFile(path.join(OUTPUT_DIR, streamId + '.summary.txt'), summary);
     }, 1);
   }
 

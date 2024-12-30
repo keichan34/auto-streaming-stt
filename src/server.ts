@@ -20,6 +20,9 @@ const server = http.createServer(app);
 let currentStreamId: string | null = null;
 
 wss.on('connection', (ws, _request) => {
+  ws.send(JSON.stringify({
+    type: 'connection',
+  }));
   ws.on('error', console.error);
   // ws.on('message', function message(data, isBinary) {
   //   console.log(`Received message ${data}`);
@@ -77,14 +80,17 @@ app.use('/api/streams', express.static(
   }
 ));
 
-app.get('/api/streams', (_req, res) => {
+app.get('/api/streams', (req, res) => {
   (async () => {
+    const beforeId = req.query.before as string | undefined;
+
     const outDir = path.join(__dirname, '..', 'out');
     const files = await fs.promises.readdir(outDir);
     const streamIds = files
       .filter((file) => file.endsWith('.mp3'))
       .map((file) => path.basename(file, '.mp3'))
       .filter((streamId) => streamId !== currentStreamId)
+      .filter((streamId) => !beforeId || streamId < beforeId)
       .filter((streamId) => {
         const txtFile = path.join(outDir, `${streamId}.txt`);
         // if the text file is empty, no transcription was made,
@@ -95,8 +101,8 @@ app.get('/api/streams', (_req, res) => {
       });
     // sort by date, newest first
     streamIds.sort((a, b) => (a > b ? -1 : 1));
-    // keep the latest 20
-    streamIds.splice(20);
+    // keep the latest 10
+    streamIds.splice(10);
 
     return streamIds;
   })().then((resp) => {
@@ -139,7 +145,7 @@ async function serve(transcription: Transcription) {
     console.log(`Listening on port ${process.env.PORT || '3000'}`);
   });
 
-  const events = ['streamStarted', 'transcript', 'streamEnded', 'summaryAvailable'] as const;
+  const events = ['streamStarted', 'transcript', 'streamEnded', 'summary'] as const;
   for (const event of events) {
     transcription.on(event, (data) => {
       broadcastMessage(JSON.stringify({
@@ -175,7 +181,7 @@ async function serve(transcription: Transcription) {
     currentStreamId = null;
   });
 
-  transcription.on('summaryAvailable', ({ streamId, summary }) => {
+  transcription.on('summary', ({ streamId, summary }) => {
     webpush.broadcast(JSON.stringify({
       type: 'summary',
       streamId,
