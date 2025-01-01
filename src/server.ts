@@ -17,6 +17,7 @@ app.use(express.json());
 const wss = new WebSocketServer({ noServer: true });
 const server = http.createServer(app);
 
+let currentSummaryStreamId: string | null = null;
 let currentStreamId: string | null = null;
 
 wss.on('connection', (ws, _request) => {
@@ -57,28 +58,43 @@ app.use(express.static(
   path.join(__dirname, '..', 'frontend', 'build'),
 ));
 
-app.use('/api/streams', express.static(
-  path.join(__dirname, '..', 'out'),
-  {
-    index: false,
-    setHeaders(res, localPath) {
-      const extname = path.extname(localPath);
-      const basename = path.basename(localPath, extname);
-      if (basename === currentStreamId) {
-        res.setHeader('Cache-Control', 'no-store');
-      } else {
-        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-      }
-      if (extname === '.mp3') {
-        res.setHeader('Content-Type', 'audio/mpeg');
-      } else if (extname === '.txt') {
-        res.setHeader('Content-Type', 'text/plain');
-      } else if (extname === '.json') {
-        res.setHeader('Content-Type', 'application/json');
-      }
-    },
+app.use('/api/streams',
+  express.static(
+    path.join(__dirname, '..', 'out'),
+    {
+      index: false,
+      setHeaders(res, localPath) {
+        const extname = path.extname(localPath);
+        const basename = path.basename(localPath, extname);
+        if (currentStreamId && basename.startsWith(currentStreamId)) {
+          res.setHeader('Cache-Control', 'no-store');
+        } else if (currentSummaryStreamId && basename.startsWith(currentSummaryStreamId)) {
+          // don't allow the summary to be cached if it hasn't been created yet
+          res.setHeader('Cache-Control', 'no-store');
+        } else {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+        if (extname === '.mp3') {
+          res.setHeader('Content-Type', 'audio/mpeg');
+        } else if (extname === '.txt') {
+          res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        } else if (extname === '.json') {
+          res.setHeader('Content-Type', 'application/json');
+        }
+      },
+    }
+  ),
+  (req, res) => {
+    const basename = path.basename(req.path);
+    if (currentStreamId && basename.startsWith(currentStreamId)) {
+      res.setHeader('Cache-Control', 'no-store');
+    } else if (currentSummaryStreamId && basename.startsWith(currentSummaryStreamId)) {
+      // don't allow the summary to be cached if it hasn't been created yet
+      res.setHeader('Cache-Control', 'no-store');
+    }
+    res.status(404).send('Not found');
   }
-));
+);
 
 app.get('/api/streams', (req, res) => {
   (async () => {
@@ -159,6 +175,7 @@ async function serve(transcription: Transcription) {
   transcription.on('streamStarted', ({ streamId }) => {
     sentNotification = false;
     currentStreamId = streamId;
+    currentSummaryStreamId = streamId;
   });
 
   transcription.on('transcript', ({ streamId }) => {
@@ -182,6 +199,7 @@ async function serve(transcription: Transcription) {
   });
 
   transcription.on('summary', ({ streamId, summary }) => {
+    currentSummaryStreamId = null;
     webpush.broadcast(JSON.stringify({
       type: 'summary',
       streamId,
