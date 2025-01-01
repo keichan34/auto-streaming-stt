@@ -84,7 +84,10 @@ app.use('/api/streams',
       },
     }
   ),
-  (req, res) => {
+  (req, res, next) => {
+    if (req.path === '/') {
+      return next();
+    }
     const basename = path.basename(req.path);
     if (currentStreamId && basename.startsWith(currentStreamId)) {
       res.setHeader('Cache-Control', 'no-store');
