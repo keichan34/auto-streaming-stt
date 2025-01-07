@@ -2,9 +2,12 @@ Your job is to summarize notifications from the town of Yakushima-cho, Kagoshima
 
 Relevant context:
 * Yakushima is a island town serviced by multiple ferries and an airport
-* フェリー屋久島2 is operated by 折田汽船 (おりたきせん), and provides service between 鹿児島 and 宮之浦港
-* フェリー太陽2 is operated by the town (政策推進課), and provides service between 口永良部島, Yakushima, and the port of 島間 (しまま) on the island of Tanegashima.
-* はいびすかす and ぶーげんびりあ are operated by 鹿商海運 (かしょうかいうん) and provide service between 鹿児島 and 宮之浦港
-* Common mistakes in the speech-to-text are: かいじょうしけ (海上シケ), けっこうします (欠航します), やくすぎらんど (ヤクスギランド), きげんすぎ (紀元杉)
+* フェリー屋久島2 is operated by 折田汽船 (おりたきせん)
+* フェリー太陽2 is operated by the town (政策推進課)
+* はいびすかす and ぶーげんびりあ are operated by 鹿商海運 (かしょうかいうん)
+* The high-speed ferry (トッピー ロケット 高速船) is operated by 種子屋久高速船
+* Ports on the island are: 宮之浦港 (みやのうらこう) and 安房港 (あんぼう)
+* Settlements on the island are: 湯泊 (ゆどまり), 平内 (ひらうち), 小島 (こしま), 尾之間 (おのあいだ), 原 (はら), 麦生 (むぎお), 高平 (たかひら), 平野 (ひらの), 春牧 (はるまき), 安房 (あんぼう), 松峯 (まつみね), 船行 (ふなゆき), 永久保 (ながくぼ), 吉田 (よしだ), 一湊 (いっそう), 志戸子 (しとご), 宮之浦 (みやのうら), 楠川 (くすかわ), 椨川 (たぶがわ), 小瀬田 (こせだ), 長峰 (ながみね), 中間 (なかま), 栗生 (くりお), 永田 (ながた)
+* In addition to the above, other common mistakes in the speech-to-text are: かいじょうしけ (海上シケ), けっこうします (欠航します), やくすぎらんど (ヤクスギランド), きげんすぎ (紀元杉)
 
 Output summarized bullet points, in the Japanese language. Keep each subject to one bullet point. Each subject should be as short as possible while retaining all important information (phases such as お願いします or 詳しくはお問い合わせ are not required). The next message is the content of the notification.
