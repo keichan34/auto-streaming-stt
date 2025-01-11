@@ -15,8 +15,6 @@ dayjs.locale('ja');
 dayjs.extend(CustomDateFormat);
 dayjs.extend(LocalizedFormat);
 
-const API_ROOT = '/api';
-
 type TranscriptItem = {
   partial: boolean;
   content: string;
@@ -141,14 +139,14 @@ const SinglePastTranscription: React.FC<SinglePastTranscriptionProps> = ({
 
   useEffect(() => {
     (async () => {
-      const resp = await fetch(`${API_ROOT}/streams/${id}.json`);
+      const resp = await fetch(`/api/streams/${id}.json`);
       if (resp.ok) {
         const data = await resp.text();
         setTranscript(data.split('\n').filter(l => l.trim().length > 0).map((line) => {
           return JSON.parse(line);
         }));
       } else {
-        const resp = await fetch(`${API_ROOT}/streams/${id}.txt`);
+        const resp = await fetch(`/api/streams/${id}.txt`);
         const data = await resp.text();
         setTranscript(data.split('\n').filter(l => l.trim().length > 0).map((line) => {
           return { partial: false, content: line.trim() };
@@ -157,7 +155,7 @@ const SinglePastTranscription: React.FC<SinglePastTranscriptionProps> = ({
     })();
 
     (async () => {
-      const resp = await fetch(`${API_ROOT}/streams/${id}.summary.txt`);
+      const resp = await fetch(`/api/streams/${id}.summary.txt`);
       if (resp.ok) {
         const data = await resp.text();
         setSummary(data);
@@ -185,7 +183,7 @@ const SinglePastTranscription: React.FC<SinglePastTranscriptionProps> = ({
           className="my-2 w-100"
           controls
           preload="none"
-          src={`${API_ROOT}/streams/${id}.mp3`}
+          src={`/api/streams/${id}.mp3`}
           ref={audioRef}
           onPlay={() => {
             // we only want to play one audio at a time, so we'll send a message to the
@@ -261,7 +259,7 @@ function App() {
 
   useEffect(() => {
     (async () => {
-      const resp = await fetch(`${API_ROOT}/streams/`);
+      const resp = await fetch(`/api/streams/`);
       const data = await resp.json() as string[];
       setPastTranscriptionIds((oldData) => {
         return [...new Set([...oldData, ...data])];
@@ -269,8 +267,11 @@ function App() {
     })();
   }, [reload, setPastTranscriptionIds]);
   useEffect(() => {
+    if (!loadTranscriptionBeforeId) {
+      return;
+    }
     (async () => {
-      const resp = await fetch(`${API_ROOT}/streams/?before=${loadTranscriptionBeforeId}`);
+      const resp = await fetch(`/api/streams/?before=${loadTranscriptionBeforeId}`);
       const data = await resp.json() as string[];
       setPastTranscriptionIds((oldData) => {
         const newData = [...new Set([...oldData, ...data])];
@@ -309,11 +310,12 @@ function App() {
   }, []);
 
   useEffect(() => {
+    let cleanup = false;
     let proto = 'ws:'; // http
     if (window.location.protocol === 'https:') {
       proto = 'wss:'; // https
     }
-    const ws = new WebSocket(`${proto}//${window.location.host}${API_ROOT}/ws`);
+    const ws = new WebSocket(`${proto}//${window.location.host}/api/ws`);
     ws.addEventListener('message', (event) => {
       const message = JSON.parse(event.data);
       if (message.type === "streamEnded") {
@@ -333,6 +335,11 @@ function App() {
     });
 
     ws.addEventListener('close', () => {
+      if (cleanup) {
+        // we're already cleaning up, so don't reconnect
+        return;
+      }
+      console.log('websocket closed, reconnecting...');
       const delay = exponentialBackoffMs(reconnect, 300);
       setTimeout(() => {
         setReconnect((prev) => prev + 1);
@@ -348,11 +355,14 @@ function App() {
     };
 
     ws.addEventListener('open', () => {
+      console.log('websocket connected');
       pingFunc();
     });
 
     return () => {
-      if (ws.readyState === WebSocket.OPEN) {
+      cleanup = true;
+
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
         ws.close();
       }
       if (typeof pingTimeout !== 'undefined') {
