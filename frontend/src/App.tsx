@@ -24,11 +24,6 @@ type TranscriptItem = {
   endTime?: number;
 };
 
-type LiveTranscription = {
-  id: string;
-  items: TranscriptItem[];
-}
-
 type TranscriptSingleLineViewProps = {
   item: TranscriptItem;
   audioRef?: React.RefObject<HTMLAudioElement>;
@@ -113,17 +108,6 @@ const TranscriptLineView: React.FC<TranscriptLineViewProps> = ({items, audioRef}
     </div>
   );
 }
-
-const LiveTranscriptionView: React.FC<{liveTranscription: LiveTranscription}> = ({liveTranscription}) => {
-  return (
-    <div className="card">
-      <div className="card-body">
-        <h5 className="card-title">{dayjs(liveTranscription.id, "YYYYMMDDHHmmss").format("LL(dddd) LT")}</h5>
-        <TranscriptLineView items={liveTranscription.items} />
-      </div>
-    </div>
-  );
-};
 
 type SinglePastTranscriptionProps = {
   id: string;
@@ -259,8 +243,6 @@ const PastTranscriptions: React.FC = () => {
 function App() {
   const isRunningStandalone = window.matchMedia('(display-mode: standalone)').matches;
 
-  const [backfillTranscriptionId, setBackfillTranscriptionId] = useState<string | null>(null);
-  const [liveTranscription, setLiveTranscription] = useState<LiveTranscription | null>(null);
   const setPastTranscriptionIds = useSetAtom(pastTranscriptionIdsAtom);
   const loadTranscriptionBeforeId = useAtomValue(loadTranscriptionBeforeIdAtom);
   const setFocusMessageId = useSetAtom(focusMessageIdAtom);
@@ -334,45 +316,11 @@ function App() {
     const ws = new WebSocket(`${proto}//${window.location.host}${API_ROOT}/ws`);
     ws.addEventListener('message', (event) => {
       const message = JSON.parse(event.data);
-      if (message.type === "streamStarted") {
-        setLiveTranscription({
-          id: message.data.streamId,
-          items: [],
-        });
-      } else if (message.type === "streamEnded") {
-        setLiveTranscription(null);
-        setBackfillTranscriptionId(null);
-        // setReload((prev) => prev + 1);
+      if (message.type === "streamEnded") {
         setPastTranscriptionIds((oldData) => {
           const data = [...new Set([...oldData, message.data.streamId])];
           data.sort((a, b) => (a > b ? -1 : 1));
           return data;
-        });
-      } else if (message.type === "transcript") {
-        setLiveTranscription((prev) => {
-          if (!prev) {
-            // we got this transcript before we got the streamStarted message,
-            // so we need to set the liveTranscription state
-            setBackfillTranscriptionId(message.data.streamId);
-            return {
-              id: message.data.streamId,
-              items: [message.data.item],
-            };
-          }
-
-          const newItems = [...prev.items];
-
-          // if the last item is partial, replace it with the new item
-          if (newItems.length > 0 && newItems[newItems.length - 1].partial) {
-            newItems[newItems.length - 1] = message.data.item;
-          } else {
-            newItems.push(message.data.item);
-          }
-
-          return {
-            id: message.data.streamId,
-            items: newItems,
-          };
         });
       } else if (message.type === "summary") {
         setSummaries((prev) => {
@@ -413,45 +361,9 @@ function App() {
     };
   }, [reconnect, setPastTranscriptionIds, setSummaries]);
 
-  useEffect(() => {
-    (async () => {
-      if (!backfillTranscriptionId) {
-        return;
-      }
-      const resp = await fetch(`${API_ROOT}/streams/${backfillTranscriptionId}.txt`);
-      const data = await resp.text();
-      const backfilledLines = data.split('\n').map((line) => {
-        return { partial: false, content: line.trim() };
-      });
-      setLiveTranscription((prev) => {
-        if (!prev) {
-          // because this is set after the liveTranscription state is set,
-          // we shouldn't get here.
-          return prev;
-        }
-        return {
-          id: prev.id,
-          items: [
-            ...backfilledLines,
-            ...prev.items,
-          ],
-        };
-      });
-    })();
-  }, [backfillTranscriptionId]);
-
   return (
     <div className="container">
-      <h1 className="my-4">屋久島の防災放送 (安房・松峯地区)</h1>
-
-      <p>
-        ご注意: このサイトは公式なものではありません。放送内容は防災放送を自動で文字起こし化し、AIによる要約を行なっています。間違いなどある場合あるので、ご了承ください。
-        <br />
-        このサイトの仕組みや背景については、<a href="https://keita.blog/2023/03/26/%E4%B9%85%E3%81%97%E3%81%B6%E3%82%8A%E3%81%AB%E5%9C%B0%E5%9B%B3%E3%81%A8%E9%96%A2%E4%BF%82%E3%81%AA%E3%81%84%E3%82%82%E3%81%AE%E3%82%92%E4%BD%9C%E3%82%8A%E3%81%BE%E3%81%97%E3%81%9F/" rel="noopener noreferer">こちらの記事</a> をご覧ください。
-      </p>
-      <p>
-        お問い合わせやご意見などは、<a href="https://x.com/sleepy_keita" rel="noopener noreferer">X (旧Twitter)</a> までお願いします。
-      </p>
+      <h1 className="my-4">屋久島の防災放送</h1>
 
       { !isRunningStandalone && (
         <p>
@@ -464,15 +376,6 @@ function App() {
           通知を受け取る
         </button>
       )) }
-
-      <div className="mb-4">
-        <h3>現在の放送</h3>
-        { liveTranscription ?
-          <LiveTranscriptionView liveTranscription={liveTranscription} />
-          :
-          <p>現在放送中ではありません。</p>
-        }
-      </div>
 
       <PastTranscriptions />
     </div>
