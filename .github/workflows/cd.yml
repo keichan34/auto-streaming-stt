@@ -49,7 +49,8 @@ jobs:
       - name: Build the app
         working-directory: ./frontend
         env:
-          REACT_APP_GA_ID: ${{ secrets.REACT_APP_GA_ID }}
+          NODE_ENV: production
+          VITE_GA_ID: ${{ secrets.REACT_APP_GA_ID }}
         run: yarn build
 
       - uses: actions/upload-artifact@v4
@@ -92,7 +93,7 @@ jobs:
         env:
           SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
-          sleep 1 # wait for tailscale to connect
+          sleep 2 # wait for tailscale to connect
           mkdir -p $HOME/.ssh
           MACHINE_IP="$(tailscale ip -4 $MACHINE)"
           ssh-keyscan $MACHINE_IP >> $HOME/.ssh/known_hosts
