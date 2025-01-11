@@ -92,6 +92,7 @@ jobs:
         env:
           SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
+          sleep 1 # wait for tailscale to connect
           mkdir -p $HOME/.ssh
           MACHINE_IP="$(tailscale ip -4 $MACHINE)"
           ssh-keyscan $MACHINE_IP >> $HOME/.ssh/known_hosts
