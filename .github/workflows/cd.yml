@@ -7,9 +7,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: 18
           cache: yarn
@@ -25,7 +25,7 @@ jobs:
           cp -r files/ upload/files/
           cp -r dist/ upload/dist/
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: backend
           if-no-files-found: error
@@ -35,9 +35,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: 18
           cache: yarn
@@ -52,7 +52,7 @@ jobs:
           REACT_APP_GA_ID: ${{ secrets.REACT_APP_GA_ID }}
         run: yarn build
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: frontend
           path: frontend/dist/
@@ -66,12 +66,12 @@ jobs:
       - build-backend
       - build-frontend
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: backend
           path: ${{github.workspace}}
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: frontend
           path: ${{github.workspace}}/frontend/build/
@@ -81,7 +81,7 @@ jobs:
 
       - name: Setup Tailscale
         id: tailscale
-        uses: tailscale/github-action@v2
+        uses: tailscale/github-action@v3
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
