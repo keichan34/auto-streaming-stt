@@ -55,10 +55,9 @@ const TranscriptSingleLineView: React.FC<TranscriptSingleLineViewProps> = (props
   }, [audioRef, endTime, startTime]);
 
   return (
-    <p
+    <span
       className={classNames({
         "text-muted": item.partial,
-        "mb-0": true,
       })}
     >
       <span
@@ -71,7 +70,7 @@ const TranscriptSingleLineView: React.FC<TranscriptSingleLineViewProps> = (props
       >
         {item.content}
       </span>
-    </p>
+    </span>
   );
 };
 
@@ -410,7 +409,7 @@ function App() {
         window.clearTimeout(pingTimeout);
       }
     };
-  }, [reconnect, setSummaries]);
+  }, [reconnect, setPastTranscriptionIds, setSummaries]);
 
   useEffect(() => {
     (async () => {
