@@ -88,14 +88,46 @@ jobs:
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci
 
+      - name: Wait for Tailscale to be ready
+        run: |
+          # Wait for Tailscale to be ready by checking the .Health array
+          for i in {1..10}; do
+            HEALTH_STATUS=$(tailscale status --json | jq '.Health')
+            if [ "$HEALTH_STATUS" == "[]" ]; then
+              echo "Tailscale is healthy."
+              break
+            else
+              echo "Tailscale health issues detected:"
+              echo "$HEALTH_STATUS"
+              echo "Retrying in 5 seconds..."
+              sleep 5
+            fi
+          done
+
+          # Final check to ensure readiness
+          HEALTH_STATUS=$(tailscale status --json | jq '.Health')
+          if [ "$HEALTH_STATUS" != "[]" ]; then
+            echo "Tailscale did not become healthy in time." >&2
+            echo "Final health issues: $HEALTH_STATUS" >&2
+            exit 1
+          fi
+
+          # Tailscale is ready, so let's ping the host to ensure it's reachable
+          MACHINE_IP="$(tailscale ip -4 $MACHINE)"
+          if ! ping -c 1 -w 60 "$MACHINE_IP"; then
+            echo "Machine at $MACHINE_IP is not reachable within the timeout period." >&2
+            exit 1
+          fi
+
+          echo "Machine is reachable at $MACHINE_IP."
+
       - name: Add SSH key
-        id: ssh
         env:
           SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
-          sleep 2 # wait for tailscale to connect
           mkdir -p $HOME/.ssh
           MACHINE_IP="$(tailscale ip -4 $MACHINE)"
+          echo "$MACHINE -> $MACHINE_IP"
           ssh-keyscan $MACHINE_IP >> $HOME/.ssh/known_hosts
           echo "$SSH_KEY" > $HOME/.ssh/key
           chmod 600 $HOME/.ssh/key
