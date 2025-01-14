@@ -266,6 +266,7 @@ function App() {
       });
     })();
   }, [reload, setPastTranscriptionIds]);
+
   useEffect(() => {
     if (!loadTranscriptionBeforeId) {
       return;
@@ -287,6 +288,7 @@ function App() {
       if (event.data.type === 'open-notif') {
         const id = event.data.id;
         setFocusMessageId(id);
+        setReload((prev) => prev + 1);
       }
     };
     navigator.serviceWorker.addEventListener('message', messageHandler);
@@ -339,7 +341,7 @@ function App() {
         // we're already cleaning up, so don't reconnect
         return;
       }
-      console.log('websocket closed, reconnecting...');
+      // console.log('websocket closed, reconnecting...');
       const delay = exponentialBackoffMs(reconnect, 300);
       setTimeout(() => {
         setReconnect((prev) => prev + 1);
@@ -355,7 +357,7 @@ function App() {
     };
 
     ws.addEventListener('open', () => {
-      console.log('websocket connected');
+      // console.log('websocket connected');
       pingFunc();
     });
 
