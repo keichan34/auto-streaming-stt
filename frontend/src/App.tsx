@@ -1,3 +1,5 @@
+/// <reference types="gtag.js" />
+
 import { useCallback, useEffect, useState } from "react";
 import { exponentialBackoffMs } from "./lib/utils";
 import { askPermissionAndSubscribe } from "./lib/webpush";
@@ -22,6 +24,7 @@ function App() {
     await askPermissionAndSubscribe();
     setIsSubscribed(true);
     localStorage.setItem('isSubscribed', 'true');
+    window.gtag('event', 'subscribe');
   }, []);
 
   useEffect(() => {
