@@ -24,7 +24,7 @@ async function main() {
     const summaryPath = path.join(outDir, `${streamId}.summary.txt`);
     console.log(`Generating summary for ${streamId}`);
     const inputText = await fs.readFile(filePath, 'utf-8');
-    const summary = await createSummary(inputText);
+    const summary = await createSummary(streamId, inputText);
     await fs.writeFile(summaryPath, summary);
   }
 }

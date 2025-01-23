@@ -1,6 +1,8 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import OpenAI from 'openai';
+import dayjs from 'dayjs';
+import dayjsCustomParseFormat from 'dayjs/plugin/customParseFormat';
 
 const filesDir = path.join(__dirname, "..", "files");
 
@@ -13,13 +15,22 @@ async function getSystemPrompt(): Promise<string> {
   return SYSTEM_PROMPT;
 }
 
-export async function createSummary(text: string): Promise<string> {
+function replacePrompt(now: dayjs.Dayjs, prompt: string): string {
+  return prompt.replace(/<<CURRENT_DATE>>/g, now.format('YYYY年MM月DD日'));
+}
+
+export async function createSummary(streamId: string, text: string): Promise<string> {
+  const prompt = await getSystemPrompt();
+
+  const now = dayjs(streamId, 'YYYYMMDDHHmmss');
+  const replacedPrompt = replacePrompt(now, prompt);
+
   const client = new OpenAI();
   const params: OpenAI.Chat.ChatCompletionCreateParams = {
     messages: [
       {
         role: 'system',
-        content: await getSystemPrompt(),
+        content: replacedPrompt,
       },
       {
         role: 'user',
@@ -27,6 +38,7 @@ export async function createSummary(text: string): Promise<string> {
       }
     ],
     model: 'gpt-4o',
+    temperature: 0.3,
   };
   const response = await client.chat.completions.create(params);
   const out = response.choices[0].message.content;

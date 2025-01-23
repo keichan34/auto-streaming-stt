@@ -110,7 +110,7 @@ class Transcription extends EventEmitter {
     this.summarizerQueue = queue(async (task) => {
       const { streamId } = task;
       const text = await fs.promises.readFile(path.join(OUTPUT_DIR, streamId + '.txt'), 'utf-8');
-      const summary = await createSummary(text);
+      const summary = await createSummary(streamId, text);
       this.emit('summary', { streamId, summary });
       await fs.promises.writeFile(path.join(OUTPUT_DIR, streamId + '.summary.txt'), summary);
     }, 1);

@@ -91,6 +91,9 @@ function App() {
     ws.addEventListener('message', (event) => {
       const message = JSON.parse(event.data);
       if (message.type === "streamEnded") {
+        if (message.data.contentLength === 0) {
+          return;
+        }
         setPastTranscriptionIds((oldData) => {
           const data = [...new Set([...oldData, message.data.streamId])];
           data.sort((a, b) => (a > b ? -1 : 1));

@@ -174,30 +174,12 @@ async function serve(transcription: Transcription) {
     });
   }
 
-  let sentNotification = false;
   transcription.on('streamStarted', ({ streamId }) => {
-    sentNotification = false;
     currentStreamId = streamId;
     currentSummaryStreamId = streamId;
   });
 
-  transcription.on('transcript', ({ streamId }) => {
-    if (!sentNotification) {
-      sentNotification = true;
-      // webpush.broadcast(JSON.stringify({
-      //   type: 'streamStarted',
-      //   streamId,
-      // }));
-    }
-  });
-
   transcription.on('streamEnded', ({ streamId, contentLength }) => {
-    if (contentLength > 0) {
-      // webpush.broadcast(JSON.stringify({
-      //   type: 'streamEnded',
-      //   streamId,
-      // }));
-    }
     currentStreamId = null;
   });
 
