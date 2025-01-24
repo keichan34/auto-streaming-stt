@@ -9,6 +9,9 @@ export default defineConfig(({mode}) => {
   const upstream = env.VITE_API_UPSTREAM || 'http://localhost:3000';
 
   return {
+    define: {
+      'process.env.NODE_ENV': `"${mode}"`,
+    },
     plugins: [
       react(),
       VitePWA({
