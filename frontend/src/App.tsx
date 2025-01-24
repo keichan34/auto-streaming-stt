@@ -6,6 +6,9 @@ import { askPermissionAndSubscribe } from "./lib/webpush";
 import { useAtomValue, useSetAtom } from "jotai";
 import { focusMessageIdAtom, loadTranscriptionBeforeIdAtom, pastTranscriptionIdsAtom, summariesAtom } from "./atoms";
 import TranscriptionListView from "./components/TranscriptionListView";
+import useSWR, { useSWRConfig } from "swr";
+import { streamsFetcher } from "./lib/data";
+import Loader from "./components/Loader";
 
 function App() {
   const isRunningStandalone = window.matchMedia('(display-mode: standalone)').matches;
@@ -14,8 +17,10 @@ function App() {
   const loadTranscriptionBeforeId = useAtomValue(loadTranscriptionBeforeIdAtom);
   const setFocusMessageId = useSetAtom(focusMessageIdAtom);
   const setSummaries = useSetAtom(summariesAtom);
-  const [reload, setReload] = useState(0);
   const [reconnect, setReconnect] = useState(0);
+
+  const { data: transcriptionIds, isLoading } = useSWR(`/api/streams/`, streamsFetcher);
+  const { mutate } = useSWRConfig();
 
   const [isSubscribed, setIsSubscribed] = useState(localStorage.getItem('isSubscribed') === 'true');
 
@@ -28,14 +33,11 @@ function App() {
   }, []);
 
   useEffect(() => {
-    (async () => {
-      const resp = await fetch(`/api/streams/`);
-      const data = await resp.json() as string[];
-      setPastTranscriptionIds((oldData) => {
-        return [...new Set([...oldData, ...data])];
-      });
-    })();
-  }, [reload, setPastTranscriptionIds]);
+    if (!transcriptionIds) { return; }
+    setPastTranscriptionIds((oldData) => {
+      return [...new Set([...oldData, ...transcriptionIds])];
+    });
+  }, [setPastTranscriptionIds, transcriptionIds]);
 
   useEffect(() => {
     if (!loadTranscriptionBeforeId) {
@@ -58,28 +60,14 @@ function App() {
       if (event.data.type === 'open-notif') {
         const id = event.data.id;
         setFocusMessageId(id);
-        setReload((prev) => prev + 1);
+        mutate(`/api/streams/`);
       }
     };
     navigator.serviceWorker.addEventListener('message', messageHandler);
     return () => {
       navigator.serviceWorker.removeEventListener('message', messageHandler);
     };
-  }, [setFocusMessageId]);
-
-  useEffect(() => {
-    // reload when the app becomes active
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        setReload((prev) => prev + 1);
-      }
-    };
-    document.addEventListener('visibilitychange', onVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', onVisibilityChange);
-    };
-  }, []);
+  }, [mutate, setFocusMessageId]);
 
   useEffect(() => {
     let cleanup = false;
@@ -164,7 +152,7 @@ function App() {
         </div>
       )) }
 
-      <TranscriptionListView />
+      { isLoading ? <Loader /> : <TranscriptionListView /> }
     </div>
   );
 }

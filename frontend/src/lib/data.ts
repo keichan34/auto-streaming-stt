@@ -27,3 +27,13 @@ export const summaryFetcher = async (
   }
   return '';
 };
+
+export const streamsFetcher = async (
+  url: string,
+): Promise<string[]> => {
+  const resp = await fetch(url);
+  if (resp.ok) {
+    return resp.json();
+  }
+  return [];
+};

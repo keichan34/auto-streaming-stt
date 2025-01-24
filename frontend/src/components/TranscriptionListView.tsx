@@ -2,7 +2,6 @@ import React, { useLayoutEffect, useRef, useState } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { pastTranscriptionIdsAtom, loadTranscriptionBeforeIdAtom } from "../atoms";
 import SPT from "./SinglePastTranscription";
-import Loader from "./Loader";
 
 const PastTranscriptions: React.FC<{pastTranscriptionIds: string[]}> = ({pastTranscriptionIds}) => {
   const lastTranscriptionId = pastTranscriptionIds[pastTranscriptionIds.length - 1];
@@ -43,10 +42,6 @@ const TranscriptionListView: React.FC = () => {
   const firstTranscriptionId = allTranscriptionIds[0];
   const pastTranscriptionIds = allTranscriptionIds.slice(1);
   const [showPastTranscriptions, setShowPastTranscriptions] = useState(false);
-
-  if (!firstTranscriptionId && pastTranscriptionIds.length === 0) {
-    return <Loader />;
-  }
 
   return (
     <div className="mb-2">
