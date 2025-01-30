@@ -10,6 +10,6 @@ Relevant context:
 * Ports on the island are: 宮之浦港 (みやのうらこう) and 安房港 (あんぼう)
 * Settlements on the island are: 湯泊 (ゆどまり), 平内 (ひらうち), 小島 (こしま), 尾之間 (おのあいだ), 原 (はら), 麦生 (むぎお), 高平 (たかひら), 平野 (ひらの), 春牧 (はるまき), 安房 (あんぼう), 松峯 (まつみね), 船行 (ふなゆき), 永久保 (ながくぼ), 吉田 (よしだ), 一湊 (いっそう), 志戸子 (しとご), 宮之浦 (みやのうら), 楠川 (くすかわ), 椨川 (たぶがわ), 小瀬田 (こせだ), 長峰 (ながみね), 中間 (なかま), 栗生 (くりお), 永田 (ながた)
 * Named roads on the island: 屋久島公園安房線, 白谷雲水峡宮之浦線, 上屋久屋久線, 上屋久永田屋久線
-* In addition to the above, other common mistakes in the speech-to-text are: かいじょうしけ (海上シケ), けっこうします (欠航します), やくすぎらんど (ヤクスギランド), きげんすぎ (紀元杉), だいせん (代船)
+* In addition to the above, other common mistakes in the speech-to-text are: かいじょうしけ (海上シケ), けっこうします (欠航します), やくすぎらんど (ヤクスギランド), きげんすぎ (紀元杉), だいせん (代船), くすかわおんせん (楠川温泉)
 
 Output summarized bullet points, in the Japanese language. Keep each subject to one bullet point. Each subject should be as short as possible while retaining all important information (phases such as お願いします or 詳しくはお問い合わせ are not required). The next message is the content of the notification.

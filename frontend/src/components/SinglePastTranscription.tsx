@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import useSWR from "swr";
 import classNames from "classnames";
 import Markdown from 'react-markdown';
 
 import dayjs from "../lib/dayjs";
 import { useAtom } from "jotai";
 import { exclusivePlaybackIdAtom, focusMessageIdAtom } from "../atoms";
-import { summaryFetcher, transcriptionFetcher, TranscriptItem } from "../lib/data";
+import { TranscriptItem } from "../lib/data";
+import { useSingleTranscription, useSummary } from "../lib/dataHooks";
 
 type TranscriptSingleLineViewProps = {
   item: TranscriptItem;
@@ -94,7 +94,7 @@ const TranscriptLineView: React.FC<TranscriptLineViewProps> = ({items, audioRef}
 }
 
 const SPTDetails: React.FC<{id: string}> = ({id}) => {
-  const { data: transcript } = useSWR(`/api/streams/${id}.json`, transcriptionFetcher);
+  const { data: transcript } = useSingleTranscription(id);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [exclusivePlaybackId, setExclusivePlaybackId] = useAtom(exclusivePlaybackIdAtom);
 
@@ -126,12 +126,11 @@ const SPTDetails: React.FC<{id: string}> = ({id}) => {
 
 type SinglePastTranscriptionProps = {
   id: string;
-  firstView: boolean;
-}
+};
 const SinglePastTranscription: React.FC<SinglePastTranscriptionProps> = ({
   id,
 }) => {
-  const { data: summary } = useSWR(`/api/streams/${id}.summary.txt`, summaryFetcher);
+  const { data: summary } = useSummary(id);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [focusMessageId, setFocusMessageId] = useAtom(focusMessageIdAtom);

@@ -1,68 +1,60 @@
-import React, { useLayoutEffect, useRef, useState } from "react";
-import { useAtomValue, useSetAtom } from "jotai";
-import { pastTranscriptionIdsAtom, loadTranscriptionBeforeIdAtom } from "../atoms";
+import React, { useState } from "react";
+import dayjs from "../lib/dayjs";
 import SPT from "./SinglePastTranscription";
+import { useTranscriptionList } from "../lib/dataHooks";
+import Loader from "./Loader";
 
 const PastTranscriptions: React.FC<{pastTranscriptionIds: string[]}> = ({pastTranscriptionIds}) => {
-  const lastTranscriptionId = pastTranscriptionIds[pastTranscriptionIds.length - 1];
-  const lastTranscriptionRef = useRef<HTMLDivElement>(null);
-  const setLoadTranscriptionBeforeId = useSetAtom(loadTranscriptionBeforeIdAtom);
-
-  useLayoutEffect(() => {
-    if (!lastTranscriptionRef.current) { return; }
-
-    const observer = new IntersectionObserver((entries) => {
-      // when the last transcription is in view, load more
-      if (entries[0].isIntersecting) {
-        setLoadTranscriptionBeforeId(lastTranscriptionId);
-      }
-    }, {
-      threshold: 0.1,
-    });
-    observer.observe(lastTranscriptionRef.current);
-    return () => {
-      observer.disconnect();
-    };
-  }, [lastTranscriptionId, setLoadTranscriptionBeforeId]);
-
   return <>
     {pastTranscriptionIds.map((id) => (
-      <div key={id} ref={id === lastTranscriptionId ? lastTranscriptionRef : undefined}>
-        <SPT
-          id={id}
-          firstView={false}
-        />
-      </div>
+      <SPT
+        key={id}
+        id={id}
+      />
     ))}
   </>
 };
 
 const TranscriptionListView: React.FC = () => {
-  const allTranscriptionIds = useAtomValue(pastTranscriptionIdsAtom);
-  const firstTranscriptionId = allTranscriptionIds[0];
-  const pastTranscriptionIds = allTranscriptionIds.slice(1);
+  // const allTranscriptionIds = useAtomValue(pastTranscriptionIdsAtom);
+  const { data: allTranscriptionIds, isLoading, isLoadingMore, loadNextPage } = useTranscriptionList();
+  const todayStr = dayjs().format('YYYYMMDD');
+  const todayTranscriptionIds = allTranscriptionIds.filter((id) => id.startsWith(todayStr));
+  // If there are no transcriptions for today, we'll just show the first one that we have (the last one of yesterday)
+  const firstTranscriptionIds = todayTranscriptionIds.length > 0 ?
+    todayTranscriptionIds : [allTranscriptionIds[0]];
+
+  const pastTranscriptionIds = allTranscriptionIds.slice(firstTranscriptionIds.length);
   const [showPastTranscriptions, setShowPastTranscriptions] = useState(false);
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <div className="mb-2">
-      { firstTranscriptionId && <>
+      { firstTranscriptionIds && <>
           <h3 className="my-4">最新の放送</h3>
-          <SPT
-            id={firstTranscriptionId}
-            firstView={true}
-          />
+          <PastTranscriptions pastTranscriptionIds={firstTranscriptionIds} />
         </>
       }
       { showPastTranscriptions ? <>
         <h3 className="my-4">過去の放送</h3>
         <PastTranscriptions pastTranscriptionIds={pastTranscriptionIds} />
+        <div className="text-center my-5">
+          {isLoadingMore ?
+            <Loader />
+            :
+            <button className="btn btn-primary" onClick={() => loadNextPage()}>さらに読み込む</button>
+          }
+        </div>
       </> : (
         <div className="text-center my-4">
           <button
             className="btn btn-primary"
             onClick={() => setShowPastTranscriptions(true)}
           >
-            過去の放送を読み込む
+            過去の放送を表示
           </button>
         </div>
       )}

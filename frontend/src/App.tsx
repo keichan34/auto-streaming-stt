@@ -3,23 +3,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { exponentialBackoffMs } from "./lib/utils";
 import { askPermissionAndSubscribe } from "./lib/webpush";
-import { useAtomValue, useSetAtom } from "jotai";
-import { focusMessageIdAtom, loadTranscriptionBeforeIdAtom, pastTranscriptionIdsAtom, summariesAtom } from "./atoms";
+import { useSetAtom } from "jotai";
+import { focusMessageIdAtom } from "./atoms";
 import TranscriptionListView from "./components/TranscriptionListView";
-import useSWR, { useSWRConfig } from "swr";
-import { streamsFetcher } from "./lib/data";
-import Loader from "./components/Loader";
+import { useTranscriptionList } from "./lib/dataHooks";
+import { useSWRConfig } from "swr";
 
 function App() {
   const isRunningStandalone = window.matchMedia('(display-mode: standalone)').matches;
 
-  const setPastTranscriptionIds = useSetAtom(pastTranscriptionIdsAtom);
-  const loadTranscriptionBeforeId = useAtomValue(loadTranscriptionBeforeIdAtom);
   const setFocusMessageId = useSetAtom(focusMessageIdAtom);
-  const setSummaries = useSetAtom(summariesAtom);
   const [reconnect, setReconnect] = useState(0);
-
-  const { data: transcriptionIds, isLoading } = useSWR(`/api/streams/`, streamsFetcher);
+  const { mutate: listMutate } = useTranscriptionList();
   const { mutate } = useSWRConfig();
 
   const [isSubscribed, setIsSubscribed] = useState(localStorage.getItem('isSubscribed') === 'true');
@@ -33,41 +28,22 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!transcriptionIds) { return; }
-    setPastTranscriptionIds((oldData) => {
-      return [...new Set([...oldData, ...transcriptionIds])];
-    });
-  }, [setPastTranscriptionIds, transcriptionIds]);
-
-  useEffect(() => {
-    if (!loadTranscriptionBeforeId) {
+    if (!('serviceWorker' in navigator)) {
       return;
     }
-    (async () => {
-      const resp = await fetch(`/api/streams/?before=${loadTranscriptionBeforeId}`);
-      const data = await resp.json() as string[];
-      setPastTranscriptionIds((oldData) => {
-        const newData = [...new Set([...oldData, ...data])];
-        newData.sort((a, b) => (a > b ? -1 : 1));
-        return newData;
-      });
-    })();
-  }, [loadTranscriptionBeforeId, setPastTranscriptionIds]);
-
-  useEffect(() => {
     const messageHandler = (event: MessageEvent) => {
       console.log('message received', event.data);
       if (event.data.type === 'open-notif') {
         const id = event.data.id;
         setFocusMessageId(id);
-        mutate(`/api/streams/`);
+        listMutate();
       }
     };
     navigator.serviceWorker.addEventListener('message', messageHandler);
     return () => {
       navigator.serviceWorker.removeEventListener('message', messageHandler);
     };
-  }, [mutate, setFocusMessageId]);
+  }, [listMutate, setFocusMessageId]);
 
   useEffect(() => {
     let cleanup = false;
@@ -82,18 +58,13 @@ function App() {
         if (message.data.contentLength === 0) {
           return;
         }
-        setPastTranscriptionIds((oldData) => {
-          const data = [...new Set([...oldData, message.data.streamId])];
-          data.sort((a, b) => (a > b ? -1 : 1));
-          return data;
-        });
+        listMutate();
       } else if (message.type === "summary") {
-        setSummaries((prev) => {
-          return {
-            ...prev,
-            [message.data.streamId]: message.data.summary,
-          };
-        });
+        listMutate();
+        mutate(
+          `/api/streams/${message.data.streamId}.summary.txt`,
+          message.data.summary,
+        );
       }
     });
 
@@ -102,7 +73,6 @@ function App() {
         // we're already cleaning up, so don't reconnect
         return;
       }
-      // console.log('websocket closed, reconnecting...');
       const delay = exponentialBackoffMs(reconnect, 300);
       setTimeout(() => {
         setReconnect((prev) => prev + 1);
@@ -132,7 +102,7 @@ function App() {
         window.clearTimeout(pingTimeout);
       }
     };
-  }, [reconnect, setPastTranscriptionIds, setSummaries]);
+  }, [listMutate, mutate, reconnect]);
 
   return (
     <div className="container">
@@ -152,7 +122,7 @@ function App() {
         </div>
       )) }
 
-      { isLoading ? <Loader /> : <TranscriptionListView /> }
+      <TranscriptionListView />
     </div>
   );
 }
