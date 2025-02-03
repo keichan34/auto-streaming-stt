@@ -14,7 +14,11 @@ function localStorageProvider() {
 
   // Before unloading the app, we write back all the data into `localStorage`.
   window.addEventListener('beforeunload', () => {
-    const appCache = JSON.stringify(Array.from(map.entries()))
+    let appCache = JSON.stringify(Array.from(map.entries()))
+    if (appCache.length > 2 ** 17) {
+      // if the cache gets too big, let's clear it
+      appCache = '[]';
+    }
     localStorage.setItem('app-cache', appCache)
   })
 

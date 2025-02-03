@@ -1,12 +1,16 @@
-import { defineConfig, loadEnv, type PluginOption } from 'vite'
+import {
+  defineConfig,
+  // loadEnv,
+  type PluginOption
+} from 'vite'
 import { visualizer } from "rollup-plugin-visualizer";
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig(({mode}) => {
-  const env = loadEnv(mode, process.cwd());
-  const upstream = env.VITE_API_UPSTREAM || 'http://localhost:3000';
+  // const env = loadEnv(mode, process.cwd());
+  // const upstream = env.VITE_API_UPSTREAM || 'http://localhost:3000';
 
   return {
     define: {
@@ -53,18 +57,18 @@ export default defineConfig(({mode}) => {
         gzipSize: true,
       }) as PluginOption,
     ],
-    server: {
-      proxy: {
-        '/api': {
-          target: upstream,
-          changeOrigin: true,
-        },
-        '/api/ws': {
-          target: upstream.replace(/^http/, 'ws'),
-          changeOrigin: true,
-          ws: true,
-        },
-      }
-    }
+    // server: {
+    //   proxy: {
+    //     '/api': {
+    //       target: upstream,
+    //       changeOrigin: true,
+    //     },
+    //     '/api/ws': {
+    //       target: upstream.replace(/^http/, 'ws'),
+    //       changeOrigin: true,
+    //       ws: true,
+    //     },
+    //   }
+    // }
   };
 });

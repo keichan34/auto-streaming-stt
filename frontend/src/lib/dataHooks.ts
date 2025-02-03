@@ -31,7 +31,7 @@ export const useTranscriptionList = () => {
     isLoading || (size > 0 && data && typeof data[size - 1] === "undefined");
 
   return {
-    data: data ? data.flat() : [],
+    data: data || [],
     error,
     isLoading,
     isLoadingMore,

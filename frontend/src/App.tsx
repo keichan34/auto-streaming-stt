@@ -1,21 +1,17 @@
 /// <reference types="gtag.js" />
 
-import { useEffect, useState } from "react";
-import { exponentialBackoffMs } from "./lib/utils";
+import { useEffect } from "react";
 import { useSetAtom } from "jotai";
 import { focusMessageIdAtom } from "./atoms";
 import TranscriptionListView from "./components/TranscriptionListView";
 import { useTranscriptionList } from "./lib/dataHooks";
-import { useSWRConfig } from "swr";
 import NotificationButton from "./components/NotificationButton";
 
 function App() {
   const isRunningStandalone = window.matchMedia('(display-mode: standalone)').matches;
 
   const setFocusMessageId = useSetAtom(focusMessageIdAtom);
-  const [reconnect, setReconnect] = useState(0);
   const { mutate: listMutate } = useTranscriptionList();
-  const { mutate } = useSWRConfig();
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) {
@@ -34,65 +30,6 @@ function App() {
       navigator.serviceWorker.removeEventListener('message', messageHandler);
     };
   }, [listMutate, setFocusMessageId]);
-
-  useEffect(() => {
-    let cleanup = false;
-    let proto = 'ws:'; // http
-    if (window.location.protocol === 'https:') {
-      proto = 'wss:'; // https
-    }
-    const ws = new WebSocket(`${proto}//${window.location.host}/api/ws`);
-    ws.addEventListener('message', (event) => {
-      const message = JSON.parse(event.data);
-      if (message.type === "streamEnded") {
-        if (message.data.contentLength === 0) {
-          return;
-        }
-        listMutate();
-      } else if (message.type === "summary") {
-        listMutate();
-        mutate(
-          `/api/streams/${message.data.streamId}.summary.txt`,
-          message.data.summary,
-        );
-      }
-    });
-
-    ws.addEventListener('close', () => {
-      if (cleanup) {
-        // we're already cleaning up, so don't reconnect
-        return;
-      }
-      const delay = exponentialBackoffMs(reconnect, 300);
-      setTimeout(() => {
-        setReconnect((prev) => prev + 1);
-      }, delay);
-    });
-
-    let pingTimeout: number;
-    const pingFunc = () => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: "ping" }));
-      }
-      pingTimeout = window.setTimeout(pingFunc, 30_000);
-    };
-
-    ws.addEventListener('open', () => {
-      // console.log('websocket connected');
-      pingFunc();
-    });
-
-    return () => {
-      cleanup = true;
-
-      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
-        ws.close();
-      }
-      if (typeof pingTimeout !== 'undefined') {
-        window.clearTimeout(pingTimeout);
-      }
-    };
-  }, [listMutate, mutate, reconnect]);
 
   return (
     <div className="min-vh-100 d-flex flex-column">

@@ -31,7 +31,6 @@ const TranscriptSingleLineView: React.FC<TranscriptSingleLineViewProps> = (props
     }
     e.preventDefault();
 
-    console.log("seeking to", startTime);
     audio.currentTime = startTime / 1000;
     if (audio.paused) {
       await audio.play();
@@ -158,10 +157,9 @@ const SinglePastTranscription: React.FC<SinglePastTranscriptionProps> = ({
   return (
     <div className="card mb-2" ref={wrapperRef}>
       <div className="card-body">
-        <h5 className="card-title">{dayjs(id, "YYYYMMDDHHmmss").format("LL(dddd) LT")}</h5>
+        <h5 className="card-title">{dayjs(id, "YYYYMMDDHHmmss").format("LT")}</h5>
         { data && (
           <div className="card-text mt-3">
-            <h4>概要</h4>
             <Markdown>{data.transcription.summary}</Markdown>
           </div>
         )}
