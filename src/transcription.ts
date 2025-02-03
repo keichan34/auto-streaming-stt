@@ -3,6 +3,7 @@ import dayjs from 'dayjs';
 import { PassThrough } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { spawn } from 'node:child_process';
+import { parse as shellQuoteParse } from 'shell-quote';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { rawToMp3 } from "./mp3";
@@ -19,7 +20,8 @@ const OUTPUT_DIR = process.env['OUTPUT_DIR'] || path.join(process.cwd(), 'out');
 
 const runSox = (outStream: PassThrough) => new Promise<void>((resolve, reject) => {
   let soxPath = '/usr/bin/sox';
-  let inputDef: string[] = ['-t', 'alsa', 'hw:0'];
+  const customParams = shellQuoteParse(process.env['SOX_INPUT_PARAMS'] || '-t alsa hw:0');
+  let inputDef: string[] = customParams.map((param) => param.toString());
   if (process.platform === 'darwin') {
     soxPath = '/opt/homebrew/bin/sox';
     inputDef = ['-t', 'coreaudio', 'default'];

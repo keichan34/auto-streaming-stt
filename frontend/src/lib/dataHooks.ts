@@ -1,20 +1,30 @@
 import useSWRInfinite from 'swr/infinite';
 import useSWRImmutable from 'swr/immutable';
-import { streamsFetcher, summaryFetcher, transcriptionFetcher } from './data';
+import { jsonFetcher, TranscriptionGetResponse, TranscriptionsGetResponse } from './data';
 
-const _transcriptionListKey = (pageIndex: number, previousPageData: string[] | null) => {
+const BASE = import.meta.env.VITE_API_URL;
+
+function formatDate(now: Date): string {
+  now.setUTCHours(now.getUTCHours() + 9);
+  return now.toISOString().slice(0, 10).replace(/-/g, '');
+}
+
+const _transcriptionListKey = (pageIndex: number) => {
   if (pageIndex === 0) {
-    return '/api/streams/';
+    return `${BASE}/transcriptions`;
   }
-  if (!previousPageData || previousPageData.length === 0) {
-    return null;
-  }
-  return `/api/streams/?before=${previousPageData[previousPageData.length - 1]}`;
+  const now = new Date();
+  // page index is the number of days ago
+  now.setDate(now.getDate() - pageIndex);
+  return `${BASE}/transcriptions?date=${formatDate(now)}`;
 }
 
 export const useTranscriptionList = () => {
-  const { data, error, isLoading,  mutate, size, setSize } = useSWRInfinite<string[]>(
-    _transcriptionListKey, streamsFetcher,
+  const { data, error, isLoading,  mutate, size, setSize } = useSWRInfinite<TranscriptionsGetResponse>(
+    _transcriptionListKey, jsonFetcher, {
+      initialSize: 2, // load today and yesterday
+      parallel: true,
+    }
   );
 
   const isLoadingMore =
@@ -30,10 +40,6 @@ export const useTranscriptionList = () => {
   }
 };
 
-export const useSummary = (id: string) => {
-  return useSWRImmutable(`/api/streams/${id}.summary.txt`, summaryFetcher);
-};
-
-export const useSingleTranscription = (id: string) => {
-  return useSWRImmutable(`/api/streams/${id}.json`, transcriptionFetcher);
+export const useTranscription = (id: string) => {
+  return useSWRImmutable<TranscriptionGetResponse>(`${BASE}/transcriptions/${id}`, jsonFetcher);
 };

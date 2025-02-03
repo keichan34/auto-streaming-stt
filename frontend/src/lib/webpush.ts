@@ -10,31 +10,36 @@ function askPermission() {
   });
 }
 
-export async function askPermissionAndSubscribe() {
+export async function askPermissionAndSubscribe(installId: string) {
   const permission = await askPermission();
 
-  if (permission === 'granted') {
-    await navigator.serviceWorker.ready;
-    const registration = await navigator.serviceWorker.getRegistration();
-    if (registration) {
-      const keyResp = await fetch('/api/push/public-key');
-      const keyRespJson = await keyResp.json();
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(keyRespJson.publicKey),
-      });
-      await fetch('/api/push/subscribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({subscription}),
-      });
-    }
-    return true;
+  if (permission !== 'granted') {
+    return false;
   }
 
-  return false;
+  await navigator.serviceWorker.ready;
+  const registration = await navigator.serviceWorker.getRegistration();
+  if (!registration) {
+    return false;
+  }
+
+  const keyResp = await fetch(`${import.meta.env.VITE_API_URL}/push/public-key`);
+  const keyRespJson = await keyResp.json();
+  const subscription = await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(keyRespJson.publicKey),
+  });
+
+  await fetch(`${import.meta.env.VITE_API_URL}/push/subscribe`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Install-Id': installId,
+    },
+    body: JSON.stringify(subscription),
+  });
+
+  return true;
 }
 
 function urlBase64ToUint8Array(base64String: string) {

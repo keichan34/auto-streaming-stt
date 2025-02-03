@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import dayjs from "../lib/dayjs";
+// import dayjs from "../lib/dayjs";
 import SPT from "./SinglePastTranscription";
 import { useTranscriptionList } from "../lib/dataHooks";
 import Loader from "./Loader";
@@ -16,15 +16,19 @@ const PastTranscriptions: React.FC<{pastTranscriptionIds: string[]}> = ({pastTra
 };
 
 const TranscriptionListView: React.FC = () => {
-  // const allTranscriptionIds = useAtomValue(pastTranscriptionIdsAtom);
-  const { data: allTranscriptionIds, isLoading, isLoadingMore, loadNextPage } = useTranscriptionList();
-  const todayStr = dayjs().format('YYYYMMDD');
-  const todayTranscriptionIds = allTranscriptionIds.filter((id) => id.startsWith(todayStr));
-  // If there are no transcriptions for today, we'll just show the first one that we have (the last one of yesterday)
-  const firstTranscriptionIds = todayTranscriptionIds.length > 0 ?
-    todayTranscriptionIds : [allTranscriptionIds[0]];
+  const { data, isLoading, isLoadingMore, loadNextPage } = useTranscriptionList();
+  const firstPageIdx = data.findIndex((x) => x.transcriptionIds.length > 0);
+  const firstPage = firstPageIdx >= 0 ? data[firstPageIdx] : null;
+  const pastPages = firstPageIdx >= 0 ? data.slice(0, firstPageIdx) : [];
+  const pastTranscriptionIds = pastPages.flatMap((x) => x.transcriptionIds);
 
-  const pastTranscriptionIds = allTranscriptionIds.slice(firstTranscriptionIds.length);
+  // const todayStr = dayjs().format('YYYYMMDD');
+  // const todayTranscriptionIds = data.find((x) => x.date === todayStr)?.transcriptionIds || [];
+
+  // const firstTranscriptionIds = todayTranscriptionIds.length > 0 ?
+  //   todayTranscriptionIds : [allTranscriptionIds[0]];
+
+  // const pastTranscriptionIds = allTranscriptionIds.slice(firstTranscriptionIds.length);
   const [showPastTranscriptions, setShowPastTranscriptions] = useState(false);
 
   if (isLoading) {
@@ -33,9 +37,9 @@ const TranscriptionListView: React.FC = () => {
 
   return (
     <div className="mb-2">
-      { firstTranscriptionIds && <>
+      { firstPage && <>
           <h3 className="my-4">最新の放送</h3>
-          <PastTranscriptions pastTranscriptionIds={firstTranscriptionIds} />
+          <PastTranscriptions pastTranscriptionIds={firstPage.transcriptionIds} />
         </>
       }
       { showPastTranscriptions ? <>

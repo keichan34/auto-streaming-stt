@@ -2,7 +2,6 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import OpenAI from 'openai';
 import dayjs from 'dayjs';
-import dayjsCustomParseFormat from 'dayjs/plugin/customParseFormat';
 
 const filesDir = path.join(__dirname, "..", "files");
 

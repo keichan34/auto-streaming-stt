@@ -1,13 +1,13 @@
 /// <reference types="gtag.js" />
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { exponentialBackoffMs } from "./lib/utils";
-import { askPermissionAndSubscribe } from "./lib/webpush";
 import { useSetAtom } from "jotai";
 import { focusMessageIdAtom } from "./atoms";
 import TranscriptionListView from "./components/TranscriptionListView";
 import { useTranscriptionList } from "./lib/dataHooks";
 import { useSWRConfig } from "swr";
+import NotificationButton from "./components/NotificationButton";
 
 function App() {
   const isRunningStandalone = window.matchMedia('(display-mode: standalone)').matches;
@@ -16,16 +16,6 @@ function App() {
   const [reconnect, setReconnect] = useState(0);
   const { mutate: listMutate } = useTranscriptionList();
   const { mutate } = useSWRConfig();
-
-  const [isSubscribed, setIsSubscribed] = useState(localStorage.getItem('isSubscribed') === 'true');
-
-  const subscribeHandler = useCallback<React.MouseEventHandler>(async (event) => {
-    event.preventDefault();
-    await askPermissionAndSubscribe();
-    setIsSubscribed(true);
-    localStorage.setItem('isSubscribed', 'true');
-    window.gtag('event', 'subscribe');
-  }, []);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) {
@@ -117,14 +107,7 @@ function App() {
           </p>
         )}
 
-        { ('Notification' in window) && (!isSubscribed && (
-          <div className="d-grid gap-2">
-            <button type="button" className="btn btn-primary mb-4" onClick={subscribeHandler}>
-              通知を受け取る
-            </button>
-          </div>
-        )) }
-
+        <NotificationButton />
         <TranscriptionListView />
       </main>
 

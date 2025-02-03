@@ -15,6 +15,8 @@ if (!AUTO_STT_API_URL && !AUTO_STT_API_KEY) {
  */
 function startPublisher(transcriber: Transcription) {
   transcriber.on('finished', async (event) => {
+    // TODO: retry logic on network errors
+
     const { streamId, summary, transcription } = event;
     console.log(`Uploading MP3 and transcription for ${streamId}`);
 
@@ -48,6 +50,8 @@ function startPublisher(transcriber: Transcription) {
     if (!r2.ok) {
       console.error(`Failed to upload transcription: ${r2.status} ${r2.statusText}`);
     }
+
+    console.log(`Finished upload MP3 and transcription for ${streamId}`);
   });
 }
 

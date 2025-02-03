@@ -1,39 +1,39 @@
-export type TranscriptItem = {
-  partial: boolean;
+export interface TranscriptionsGetResponse {
+  date: string;
+  transcriptionIds: string[];
+}
+
+export interface SingleTranscription {
+  summary: string;
+  transcription: TranscriptionItem[];
+}
+
+export interface TranscriptionItem {
   content: string;
-  startTime?: number;
-  endTime?: number;
-};
+  startTime: number;
+  endTime: number;
+  partial: boolean;
+}
 
-export const transcriptionFetcher = async (
-  url: string,
-): Promise<TranscriptItem[]> => {
-  const resp = await fetch(url);
-  if (resp.ok) {
-    const data = await resp.text();
-    return data.split('\n').filter(l => l.trim().length > 0).map((line) => {
-      return JSON.parse(line);
-    });
+export interface TranscriptionGetResponse {
+  id: string;
+  transcription: SingleTranscription;
+}
+
+export async function jsonFetcher<T = unknown>(url: string | [string, { headers: Record<string, string>}]): Promise<T> {
+  let urlStr: string;
+  let headers: Record<string, string> = {};
+  if (Array.isArray(url)) {
+    urlStr = url[0];
+    headers = url[1].headers;
+  } else {
+    urlStr = url;
   }
-  return [];
-};
 
-export const summaryFetcher = async (
-  url: string,
-): Promise<string> => {
-  const resp = await fetch(url);
-  if (resp.ok) {
-    return resp.text();
-  }
-  return '';
-};
-
-export const streamsFetcher = async (
-  url: string,
-): Promise<string[]> => {
-  const resp = await fetch(url);
+  const resp = await fetch(urlStr, { headers });
   if (resp.ok) {
     return resp.json();
+  } else {
+    throw new Error(`Failed to fetch ${url}: ${resp.status} ${resp.statusText}`);
   }
-  return [];
-};
+}
