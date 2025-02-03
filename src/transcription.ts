@@ -11,6 +11,7 @@ import EventEmitter from "node:events";
 import runTranscriptionUntilDoneGoogle from './transcriptionBackends/google';
 import { queue, QueueObject } from 'async';
 import { createSummary } from './summarizer';
+import { TranscriptionResult } from './transcriptionBackends';
 // import runTranscriptionUntilDoneAzure from './transcriptionBackends/azure';
 // import { AudioStreamEvent } from './transcriptionBackends';
 
@@ -89,7 +90,24 @@ export interface TranscriptionEvents {
   streamStarted: { streamId: string };
   transcript: { streamId: string, item: any };
   streamEnded: { streamId: string, contentLength: number };
-  summary: { streamId: string, summary: string };
+  summary: {
+    /// The stream ID of the audio stream.
+    streamId: string,
+    /// The summary text.
+    summary: string,
+  };
+  finished: {
+    /// The stream ID of the audio stream.
+    streamId: string,
+    /// The summary text.
+    summary: string,
+    /// The full text of the transcription.
+    fullText: string,
+    /// The transcription JSON.
+    transcription: TranscriptionResult[],
+    /// The MP3 file
+    mp3Buffer: Buffer,
+  }
 }
 
 declare interface Transcription {
@@ -103,16 +121,25 @@ declare interface Transcription {
 }
 
 class Transcription extends EventEmitter {
-  summarizerQueue: QueueObject<{streamId: string}>;
+  summarizerQueue: QueueObject<{streamId: string, transcription: TranscriptionResult[]}>;
 
   constructor() {
     super();
     this.summarizerQueue = queue(async (task) => {
-      const { streamId } = task;
-      const text = await fs.promises.readFile(path.join(OUTPUT_DIR, streamId + '.txt'), 'utf-8');
+      const { streamId, transcription } = task;
+      const text = transcription.map((item) => item.content).join('\n');
       const summary = await createSummary(streamId, text);
       this.emit('summary', { streamId, summary });
       await fs.promises.writeFile(path.join(OUTPUT_DIR, streamId + '.summary.txt'), summary);
+
+      const mp3 = await fs.promises.readFile(path.join(OUTPUT_DIR, streamId + '.mp3'));
+      this.emit('finished', {
+        streamId,
+        summary,
+        fullText: text,
+        transcription,
+        mp3Buffer: mp3,
+      });
     }, 1);
     this.summarizerQueue.error((err, {streamId}) => {
       console.error(`Error in summarizer for ${streamId}:`, err);
@@ -133,12 +160,13 @@ class Transcription extends EventEmitter {
 
     let contentLength = 0;
 
-    await Promise.all([
+    const [transcriptionResults, _] = await Promise.all([
       (async () => {
         const textOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.txt'), 'w');
         const jsonOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.json'), 'w');
         let lastContent = '';
         let retryCount = 0, done = false;
+        const transcriptionResults: TranscriptionResult[] = [];
         while (retryCount < 3 && !done) {
           try {
             for await (const item of runTranscriptionUntilDoneGoogle(audioStream)) {
@@ -154,6 +182,7 @@ class Transcription extends EventEmitter {
                 contentLength += item.content.trim().length;
 
                 console.log(item.content);
+                transcriptionResults.push(item);
                 textOut.write(item.content + '\n');
                 jsonOut.write(JSON.stringify(item) + '\n');
               }
@@ -168,29 +197,8 @@ class Transcription extends EventEmitter {
           textOut.close(),
           jsonOut.close(),
         ]);
+        return transcriptionResults;
       })(),
-      // (async () => {
-      //   const textOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.azure.txt'), 'w');
-      //   const jsonOut = await fs.promises.open(path.join(OUTPUT_DIR, streamId + '.azure.json'), 'w');
-      //   let lastContent = '';
-      //   for await (const item of runTranscriptionUntilDoneAzure(audioStream)) {
-      //     if (item.content === '') { continue; }
-      //     if (item.partial && item.content === lastContent) { continue; }
-      //     lastContent = item.content;
-
-      //     if (item.partial) {
-      //       console.log('[Azure Partial]', item.content);
-      //     } else {
-      //       console.log('[Azure]', item.content);
-      //       textOut.write(item.content + '\n');
-      //       jsonOut.write(JSON.stringify(item) + '\n');
-      //     }
-      //   }
-      //   await Promise.all([
-      //     textOut.close(),
-      //     jsonOut.close(),
-      //   ]);
-      // })(),
       soxPromise,
     ]);
 
@@ -200,7 +208,10 @@ class Transcription extends EventEmitter {
       contentLength,
     });
     if (contentLength > 0) {
-      this.summarizerQueue.push({ streamId });
+      this.summarizerQueue.push({
+        streamId,
+        transcription: transcriptionResults,
+      });
     }
   }
 
