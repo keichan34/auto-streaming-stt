@@ -185,11 +185,11 @@ async function serve(transcription: Transcription) {
 
   transcription.on('summary', ({ streamId, summary }) => {
     currentSummaryStreamId = null;
-    webpush.broadcast(JSON.stringify({
-      type: 'summary',
-      streamId,
-      summary,
-    }));
+    // webpush.broadcast(JSON.stringify({
+    //   type: 'summary',
+    //   streamId,
+    //   summary,
+    // }));
   });
 }
 
