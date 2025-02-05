@@ -1,5 +1,5 @@
 {
-  "extends": "@tsconfig/node18/tsconfig.json",
+  "extends": "@tsconfig/node22/tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
     "esModuleInterop": true,
@@ -7,7 +7,7 @@
   },
   "include": [
     "src/**/*.ts"
-, "src/transcriptionBackends/azure.xts"  ],
+  ],
   "exclude": [
     "node_modules/**/*"
   ]

@@ -11,11 +11,11 @@
     "build": "tsc && cp src/transcriptionBackends/phrases.txt dist/transcriptionBackends/phrases.txt"
   },
   "devDependencies": {
-    "@tsconfig/node18": "^18.2.2",
+    "@tsconfig/node22": "^22.0.0",
     "@types/async": "^3.2.24",
     "@types/express": "^4.17.15",
     "@types/express-ws": "^3.0.1",
-    "@types/node": "^18",
+    "@types/node": "^22",
     "@types/shell-quote": "^1.7.5",
     "@types/web-push": "^3.3.2",
     "ts-node": "^10.9.1",
