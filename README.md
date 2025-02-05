@@ -29,6 +29,8 @@ sox -t alsa hw:0 -c 1 -b 16 -r 8000 -e signed-integer -t raw - silence 1 0.5 0.1
 
 ## Setup
 
+See [INSTALL.md](./INSTALL.md)
+
 * Google API authentication
 * Server authentication
 * OpenAI API authentication
