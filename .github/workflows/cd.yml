@@ -21,7 +21,7 @@ jobs:
         run: |
           yarn build
           mkdir upload
-          cp -r package.json yarn.lock upload/
+          cp -r .tool-versions package.json yarn.lock upload/
           cp -r files/ upload/files/
           cp -r dist/ upload/dist/
 
