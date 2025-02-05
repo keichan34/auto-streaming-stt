@@ -11,7 +11,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22
           cache: yarn
 
       - name: Install dependencies
@@ -39,7 +39,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22
           cache: yarn
 
       - name: Install dependencies
@@ -87,6 +87,7 @@ jobs:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci
+          version: latest
 
       - name: Wait for Tailscale to be ready
         run: |
@@ -114,4 +115,4 @@ jobs:
         run: |
           MACHINE_IP="$(tailscale ip -4 $MACHINE)"
           rsync -avr -e "ssh -i $HOME/.ssh/key" ./ "pi@[$MACHINE_IP]":/home/pi/auto-streaming-stt/
-          ssh -i "$HOME/.ssh/key" "pi@$MACHINE_IP" 'cd /home/pi/auto-streaming-stt && yarn && pm2 restart index'
+          ssh -i "$HOME/.ssh/key" "pi@$MACHINE_IP" 'cd /home/pi/auto-streaming-stt && mise install && npm i -g yarn && yarn && sudo systemctl restart auto-streaming-stt'
