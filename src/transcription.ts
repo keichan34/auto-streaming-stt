@@ -88,6 +88,18 @@ function getAudioStream() {
   };
 }
 
+export type TranscriptionEventFinished = {
+  /// The stream ID of the audio stream.
+  streamId: string,
+  /// The summary text.
+  summary: string,
+  /// The full text of the transcription.
+  fullText: string,
+  /// The transcription JSON.
+  transcription: TranscriptionResult[],
+  /// The MP3 file
+  mp3Buffer: Buffer,
+}
 export interface TranscriptionEvents {
   streamStarted: { streamId: string };
   transcript: { streamId: string, item: any };
@@ -98,18 +110,7 @@ export interface TranscriptionEvents {
     /// The summary text.
     summary: string,
   };
-  finished: {
-    /// The stream ID of the audio stream.
-    streamId: string,
-    /// The summary text.
-    summary: string,
-    /// The full text of the transcription.
-    fullText: string,
-    /// The transcription JSON.
-    transcription: TranscriptionResult[],
-    /// The MP3 file
-    mp3Buffer: Buffer,
-  }
+  finished: TranscriptionEventFinished;
 }
 
 declare interface Transcription {
