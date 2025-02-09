@@ -20,6 +20,11 @@ export interface TranscriptionGetResponse {
   transcription: SingleTranscription;
 }
 
+export function formatDate(now: Date): string {
+  now.setUTCHours(now.getUTCHours() + 9);
+  return now.toISOString().slice(0, 10).replace(/-/g, '');
+}
+
 export async function jsonFetcher<T = unknown>(url: string | [string, { headers: Record<string, string>}]): Promise<T> {
   let urlStr: string;
   let headers: Record<string, string> = {};

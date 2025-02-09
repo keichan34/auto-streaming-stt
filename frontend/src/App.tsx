@@ -1,8 +1,8 @@
 /// <reference types="gtag.js" />
 
 import { useEffect } from "react";
-import { useSetAtom } from "jotai";
-import { focusMessageIdAtom } from "./atoms";
+import { useAtomValue, useSetAtom } from "jotai";
+import { focusMessageIdAtom, todayDateAtom } from "./atoms";
 import TranscriptionListView from "./components/TranscriptionListView";
 import { useTranscriptionList } from "./lib/dataHooks";
 import NotificationButton from "./components/NotificationButton";
@@ -11,7 +11,8 @@ function App() {
   const isRunningStandalone = window.matchMedia('(display-mode: standalone)').matches;
 
   const setFocusMessageId = useSetAtom(focusMessageIdAtom);
-  const { mutate: listMutate } = useTranscriptionList();
+  const todayDate = useAtomValue(todayDateAtom);
+  const { mutate: listMutate } = useTranscriptionList(todayDate);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) {
