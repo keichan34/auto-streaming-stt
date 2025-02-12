@@ -132,6 +132,10 @@ class Transcription extends EventEmitter {
       const { streamId, transcription } = task;
       const text = transcription.map((item) => item.content).join('\n');
       const summary = await createSummary(streamId, text);
+      if (summary === '') {
+        return;
+      }
+
       this.emit('summary', { streamId, summary });
       await fs.promises.writeFile(path.join(OUTPUT_DIR, streamId + '.summary.txt'), summary);
 

@@ -36,6 +36,7 @@ export async function createSummary(streamId: string, text: string): Promise<str
         content: text,
       }
     ],
+    stop: ['NOTHING'],
     model: 'gpt-4o',
     temperature: 0.3,
   };
