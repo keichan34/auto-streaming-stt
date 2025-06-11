@@ -7,9 +7,19 @@ import dayjs from "../lib/dayjs";
 import { useAtomValue } from "jotai";
 import { todayDateAtom } from "../atoms";
 
-const PastTranscriptions: React.FC<{date: string}> = ({date}) => {
+const PastTranscriptions: React.FC<{
+  date: string;
+  onEmpty?: () => void;
+}> = ({date, onEmpty}) => {
   const { data, isLoading } = useTranscriptionList(date);
   const transcriptionIds = data?.transcriptionIds ?? [];
+
+  useEffect(() => {
+    if (!isLoading && transcriptionIds.length === 0 && onEmpty) {
+      onEmpty();
+    }
+  }, [isLoading, transcriptionIds.length, onEmpty]);
+
   return <>
     {isLoading && <Loader />}
 
@@ -35,8 +45,7 @@ const TranscriptionListView: React.FC = () => {
     });
   }, [today]);
 
-  const loadNextPage = useCallback<React.EventHandler<React.MouseEvent>>((ev) => {
-    ev.preventDefault();
+  const loadNextPage = useCallback(() => {
     setShownDates((prev) => {
       const lastDate = prev[prev.length - 1];
       const newDate = dayjs(lastDate, "YYYYMMDD").subtract(1, "day").format("YYYYMMDD");
@@ -48,7 +57,10 @@ const TranscriptionListView: React.FC = () => {
   for (const dateStr of shownDates) {
     pages.push(<React.Fragment key={dateStr}>
       <h3 className="mt-4 mb-3">{dayjs(dateStr, "YYYYMMDD").format("LL(dddd)")}</h3>
-      <PastTranscriptions date={dateStr} />
+      <PastTranscriptions
+        date={dateStr}
+        onEmpty={dateStr === shownDates[shownDates.length - 1] ? loadNextPage : undefined}
+      />
     </React.Fragment>)
   }
 
@@ -56,7 +68,10 @@ const TranscriptionListView: React.FC = () => {
     <div className="mb-2">
       {pages}
       <div className="text-center my-5">
-        <button className="btn btn-primary" onClick={loadNextPage}>さらに読み込む</button>
+        <button className="btn btn-primary" onClick={(ev) => {
+          ev.preventDefault();
+          loadNextPage();
+        }}>さらに読み込む</button>
       </div>
     </div>
   );

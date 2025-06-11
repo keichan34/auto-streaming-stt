@@ -7,6 +7,13 @@ import { SWRConfig } from 'swr';
 
 registerSW({immediate: true});
 
+// Expose a global function to reset the cache
+declare global {
+  interface Window {
+    __resetCache: () => void;
+  }
+}
+
 function localStorageProvider() {
   // When initializing, we restore the data from `localStorage` into a map.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -21,6 +28,14 @@ function localStorageProvider() {
     }
     localStorage.setItem('app-cache', appCache)
   })
+
+  // Add the reset cache function to the window object
+  window.__resetCache = () => {
+    localStorage.removeItem('app-cache');
+    // Clear our local cache
+    map.clear();
+    console.log('Cache has been reset');
+  };
 
   // We still use the map for write & read for performance.
   return map
