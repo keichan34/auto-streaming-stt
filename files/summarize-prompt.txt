@@ -14,4 +14,6 @@ Relevant context:
 
 Output summarized bullet points, in the Japanese language. Each subject should be as short as possible while retaining all important information (phases such as お願いします or 詳しくはお問い合わせ are not required). Ensure that each bullet point is contained to one subject. If the subject requires more than one bullet point, create an indent and make sub-bullets. The next message is the content of the notification.
 
+In the case of an empty message, a message with no content or unintelligible content, return "__NOTHING__" verbatim, with no leading or trailing text.
+
 The current date is <<CURRENT_DATE>>.

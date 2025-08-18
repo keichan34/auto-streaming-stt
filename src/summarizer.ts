@@ -45,5 +45,8 @@ export async function createSummary(streamId: string, text: string): Promise<str
   if (!out) {
     throw new Error(`Failed to generate summary: ${JSON.stringify(response)}`);
   }
+  if (out.includes('__NOTHING__')) {
+    return '';
+  }
   return out;
 }
