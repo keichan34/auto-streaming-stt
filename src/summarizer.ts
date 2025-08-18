@@ -19,29 +19,29 @@ function replacePrompt(now: dayjs.Dayjs, prompt: string): string {
 }
 
 export async function createSummary(streamId: string, text: string): Promise<string> {
+  if (text.trim().length === 0) {
+    return '';
+  }
+
   const prompt = await getSystemPrompt();
 
   const now = dayjs(streamId, 'YYYYMMDDHHmmss');
   const replacedPrompt = replacePrompt(now, prompt);
 
   const client = new OpenAI();
-  const params: OpenAI.Chat.ChatCompletionCreateParams = {
-    messages: [
-      {
-        role: 'system',
-        content: replacedPrompt,
-      },
-      {
-        role: 'user',
-        content: text,
-      }
-    ],
-    stop: ['NOTHING'],
-    model: 'gpt-4o',
-    temperature: 0.3,
+  const params: OpenAI.Responses.ResponseCreateParamsNonStreaming = {
+    instructions: replacedPrompt,
+    input: text,
+    model: 'gpt-5',
+    reasoning: {
+      effort: 'minimal',
+    },
+    text: {
+      verbosity: 'low',
+    },
   };
-  const response = await client.chat.completions.create(params);
-  const out = response.choices[0].message.content;
+  const response = await client.responses.create(params);
+  const out = response.output_text;
   if (!out) {
     throw new Error(`Failed to generate summary: ${JSON.stringify(response)}`);
   }
