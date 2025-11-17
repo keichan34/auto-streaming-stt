@@ -60,7 +60,7 @@ export async function createSummary(streamId: string, text: string): Promise<str
     input: text,
     model: 'gpt-5.1',
     reasoning: {
-      effort: 'minimal',
+      effort: 'low',
     },
     text: {
       verbosity: 'low',
