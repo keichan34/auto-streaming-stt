@@ -39,6 +39,20 @@ function App() {
       </header>
 
       <main className="flex-fill container">
+        <section className="alert alert-warning mt-3" aria-labelledby="site-migration-title">
+          <h2 id="site-migration-title" className="alert-heading fs-5">サイト移行のお知らせ</h2>
+          <p>
+            現在、本サイトは<a className="alert-link text-break" href="https://yakushima-matsumine.machibiko.jp/">https://yakushima-matsumine.machibiko.jp/</a>への移行作業を進めております。
+            本サイトの更新は終了しておりますので、最新情報は移行先サイトをご確認ください。
+          </p>
+          <p>
+            今後、本サイトから移行先サイトへ自動的に転送する予定です。
+          </p>
+          <p className="mb-0">
+            引き続き通知の受信をご希望の方は、お手数ですが移行先サイトで改めて通知の受信設定をお願いいたします。
+          </p>
+        </section>
+
         { !isRunningStandalone && (
           <p>
             このサイトをホーム画面に追加すると、通知を受け取ることができます。
